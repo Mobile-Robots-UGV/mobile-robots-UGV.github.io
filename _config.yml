@@ -1,11 +1,16 @@
-title: Just the Docs Template
-description: A starter template for a Jeykll site using the Just the Docs theme!
+title: SmartFollower & Tracker
+description: Object Tracking, Obstacle Circumvention, and 2D reconstruction
 theme: just-the-docs
 
-url: https://just-the-docs.github.io
+url: https://mobile-robots-ugv.github.io/ # https://just-the-docs.github.io
 
 remote_theme: just-the-docs/just-the-docs
 math: mathjax
 
+mermaid:
+  version: "10.6.1"
+
 aux_links:
-  Template Repository: https://github.com/just-the-docs/just-the-docs-template
+  Tatwik Meesala: https://tatwik19.github.io/
+  Prajjwal: https://robopod.in/
+  Lu Yan Tan: https://www.linkedin.com/in/lu-yan-tan-4b5a27290/
