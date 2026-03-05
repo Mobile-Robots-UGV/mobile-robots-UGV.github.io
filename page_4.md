@@ -7,7 +7,7 @@ nav_order: 4
 
 
 ## 4. Safety & Operational Protocol
-### 4.1 Sensors
+### 4.1 Sensors-Based Safety Layers
 The Turtlebot 4 uses multiple redundant sensing layers to maintain safe operation in dynamic warehouse environments.
 - **Lidar Snesor:**
   Allow the turtlebot to react when an obstacle is detected within a specific range
@@ -28,7 +28,7 @@ Physical contraints describe the non-negotiable real-world limits that the Turtl
   The robot must cap linear and angular velocity to remain safe around obstacles. The speed limits is directly tied to how fast the sensors can update and how far the robot need to stop.
 
 ### 4.3 Software Deadman Switch
-The Deadman Switch ensures the robot never moves when safety conditions are not met.
+The Deadman Switch ensures the robot never moves when safety conditions are not met. When the Deadman Switch is triggered, the robot immediately halts all motion, cancels navigation goals, and requires manual operator reset.
 - **Message Timer:**
   Missing /cmd_vel messages within 500ms halt the operation.
 - **Missing OOI:**
@@ -47,10 +47,22 @@ Timeouts Logic decides when the robot must stop, slow down, or switch into a dif
 - **Slow Update Speed:**
   When the message/sensor update rate is slow, reduce robot speed.
 
+### 4.5 Emergency Step (E-Stop Condition)
+The E-Stop defines the highest-priority safety mechanism. It forces irreversible motor shutdown until a human operator manually resets the system.
+**The E-Stop happens when:**
+  - Wheel-drop triggered.
+  - Cliff sensor triggered.
+  - Bumper triggered.
+  - IMU tilted beyond safe limits.
+  - Extremely low battery level detected.
+  - Manual stop triggered by operators.
+
+**E-Stop behavior:**
+  - All motor commands are disabled.
+  - Navigation goals are canceled.
+  - No autonomous recovery is allowed(Needs a manual reset).
 
 
 
-## 5. Git Infrastructure
-### 5.1 Link to shared team repository
 
-### 5.2 Git Submodule setup
+

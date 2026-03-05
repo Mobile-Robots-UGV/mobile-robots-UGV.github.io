@@ -21,10 +21,10 @@ Warehouses and factory floors routinely experience exception events (e.g., missi
 
 **Key constraints:**
 - Dynamic obstacles (workers, carts, pallets)
+- Dynamic targets (humans, carts, tote)
 - Frequent occlusions and lighting variability
 - Safety requirements for shared human-robot space
 - Narrow spaces for robot to pass through
-- Static target
 
 ### 1.3 Primary Problem Statement
 Given a dynamic indoor warehouse environment without GPS, develop a mobile robot system that:
