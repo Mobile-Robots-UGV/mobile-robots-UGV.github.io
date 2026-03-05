@@ -2,7 +2,7 @@ title: SmartFollower & Tracker
 description: Object Tracking, Obstacle Circumvention, and 2D reconstruction
 theme: just-the-docs
 
-url: https://mobile-robots-ugv.github.io/ # https://just-the-docs.github.io
+url: https://mobile-robots-ugv.github.io/page_1.html # https://just-the-docs.github.io
 
 remote_theme: just-the-docs/just-the-docs
 math: mathjax
