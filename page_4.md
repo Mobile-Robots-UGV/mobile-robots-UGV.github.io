@@ -1,71 +1,56 @@
 ---
-title: 04 Time Line
+title: 4 Safety & Operational Protocol
 layout: home
 nav_order: 4
 ---
 
-### 6. Project Schedule
-## Gantt Chart Timeline (Weeks 7–16)
 
-| Week | Task Category | Planned Work |
-|------|---------------|--------------|
-| **Week 7** | Hardware Integration | Verify TB4 base, networking, teleop mobility |
-|  | Sensors | Bring up LiDAR + RGB‑D drivers; visualize raw topics |
-|  | Controls & Autonomy | Validate `/cmd_vel`, odom, TF tree |
-|  | Interface & Data | Basic RViz setup (robot model + LiDAR) |
-|  | Milestone | Robot moves via teleop; all sensors online |
 
-| **Week 8** | Hardware Integration | Mount camera; cable management |
-|  | Sensors | Calibrate RGB‑D; verify depth stream |
-|  | Controls & Autonomy | Configure EKF with IMU + odom |
-|  | Interface & Data | RViz fused pose visualization |
-|  | Milestone | Stable localization pipeline |
+## 4. Safety & Operational Protocol
+### 4.1 Sensors
+The Turtlebot 4 uses multiple redundant sensing layers to maintain safe operation in dynamic warehouse environments.
+- **Lidar Snesor:**
+  Allow the turtlebot to react when an obstacle is detected within a specific range
+- **Bump Sensor:**
+  Pause movement when hitting obstacles after Lidar missed the object detection
+- **Cliff Sensor:**
+  Prevent robot from falling down at the edge of a surface
+- **Wheel-drop Sensor:**
+  Detect whether the turtlebot if lifted and stop the wheel from operating
+- **IMU:**
+  Monitors abnormal tilt, acceleration, or impacts to handle unexpected motion by slowing down/stop.
 
-| **Week 9** | Hardware Integration | Long‑duration hardware test |
-|  | Sensors | Collect rosbag for mapping |
-|  | Controls & Autonomy | Bring up Nav2; point‑to‑point navigation |
-|  | Interface & Data | Visualize map + path |
-|  | Milestone | Robot navigates in simple map |
+### 4.2 Pysical Contraints
+Physical contraints describe the non-negotiable real-world limits that the Turtlebots must abide to ensure safe and predictable behavior.
+- **Turtlebot Dimensions:**
+  The body frame size of the Turtlebot 4 and how the sensors are mounted have defines the minimum aisle width the robot can safely navigate without scraping pallets or shelving.
+- **Speed Limits:**
+  The robot must cap linear and angular velocity to remain safe around obstacles. The speed limits is directly tied to how fast the sensors can update and how far the robot need to stop.
 
-| **Week 10** | Hardware Integration | Validate bumper, cliff, wheel‑drop |
-|  | Sensors | Ground‑plane removal + filtering |
-|  | Controls & Autonomy | Tune local planner for narrow aisles |
-|  | Interface & Data | Begin trajectory logging |
-|  | Milestone | Safe navigation in semi‑cluttered space |
+### 4.3 Software Deadman Switch
+The Deadman Switch ensures the robot never moves when safety conditions are not met.
+- **Message Timer:**
+  Missing /cmd_vel messages within 500ms halt the operation.
+- **Missing OOI:**
+  OOI is not detected within a specific amount of time
+- **Battery Life Prediction:**
+  End the program when robots is close to running out of battery to ensure robot stay in a relatively safe position
 
-| **Week 11** | Hardware Integration | Integrate fiducial markers on OOI |
-|  | Sensors | Implement AprilTag OOI detection |
-|  | Controls & Autonomy | Implement follow behavior (distance + heading) |
-|  | Interface & Data | Visualize OOI pose + follow distance |
-|  | Milestone | Robot follows OOI in open space |
+### 4.4 Timeout Logic
+Timeouts Logic decides when the robot must stop, slow down, or switch into a different mode because a critical subsystem no longer work reliably.
+- **Sensor Timeouts:**
+  The turtlebot has to stop moving when Lidar stops publishing messages.
+- **Tracking Timeouts:**
+  If OOI is lost for a threshold time, enters "search" or "safe fallback" mode.
+- **Planning Timeouts:**
+  Each operation is time-limited and once the time is up, the turtlebot should end the operation and return the final position of the OOI.
+- **Slow Update Speed:**
+  When the message/sensor update rate is slow, reduce robot speed.
 
-| **Week 12** | Hardware Integration | Stress‑test hardware during follow runs |
-|  | Sensors | Add occlusion‑handling logic |
-|  | Controls & Autonomy | Integrate follow + obstacle avoidance |
-|  | Interface & Data | Structured evidence log (OOI + timestamps) |
-|  | Milestone | Follow + avoid obstacles in cluttered space |
 
-| **Week 13** | Hardware Integration | Validate E‑Stop + deadman switch |
-|  | Sensors | Tune timeouts + failure responses |
-|  | Controls & Autonomy | Implement fallback modes (search, stop, reacquire) |
-|  | Interface & Data | Export map + trajectory + OOI log |
-|  | Milestone | Full pipeline operational with safety guarantees |
 
-| **Week 14** | Hardware Integration | Minor stabilization only |
-|  | Sensors | Final tuning of filters + thresholds |
-|  | Controls & Autonomy | Scenario tests: occlusions, tight aisles, dynamic agents |
-|  | Interface & Data | Build dashboard/notebook for log review |
-|  | Milestone | Meets baseline success criteria |
 
-| **Week 15** | Hardware Integration | Freeze hardware configuration |
-|  | Sensors | Regression tests |
-|  | Controls & Autonomy | Freeze parameters; document configs |
-|  | Interface & Data | Polish visualizations for demo/report |
-|  | Milestone | System ready for final demo |
+## 5. Git Infrastructure
+### 5.1 Link to shared team repository
 
-| **Week 16** | Hardware Integration | Demo prep: charging, spares, setup |
-|  | Sensors | Quick health checks |
-|  | Controls & Autonomy | Run final scripted demo |
-|  | Interface & Data | Capture final logs, screenshots, videos |
-|  | Milestone | Final demo completed |
-
+### 5.2 Git Submodule setup
