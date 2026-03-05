@@ -11,7 +11,7 @@ https://github.com/Mobile-Robots-UGV/mobile-robots-UGV.github.io
 ### 5.2 Git Submodule setup
 This website is included in the main project repository as a Git submodule.
 
-### 6. Project Schedule
+### Project Schedule(Extra)
 ## Gantt Chart Timeline (Weeks 7–16)
 
 | Week | Task Category | Planned Work |

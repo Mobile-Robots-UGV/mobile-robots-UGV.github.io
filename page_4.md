@@ -47,7 +47,7 @@ Timeouts Logic decides when the robot must stop, slow down, or switch into a dif
 - **Slow Update Speed:**
   When the message/sensor update rate is slow, reduce robot speed.
 
-### 4.5 Emergency Step (E-Stop Condition)
+### 4.5 Emergency Stop (E-Stop Condition)
 The E-Stop defines the highest-priority safety mechanism. It forces irreversible motor shutdown until a human operator manually resets the system.
 **The E-Stop happens when:**
   - Wheel-drop triggered.
