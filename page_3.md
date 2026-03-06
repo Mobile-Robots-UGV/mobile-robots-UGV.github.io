@@ -109,29 +109,25 @@ stateDiagram-v2
 
 #### Library Modules
 
-**LiDAR Driver**
-Continuously publishes 2D laser scans at 10–25 Hz. Critical for SLAM (pre-mapping) and real-time obstacle detection. **Tuning parameters:** scan rate, max range, angular resolution. For TurtleBot-scale robots (e.g., SICK TiM781), typical settings are ~25 Hz scan rate with 8 m max range. During occlusion events, scan data feeds both AMCL for localization and the local costmap for dynamic obstacle detection.
+- **LiDAR Driver:** Publishes 2D laser scans at 10–25 Hz. Tune: scan rate, max range, angular resolution (typical: 25 Hz, 8 m range).
 
-**Wheel Odometry & Base Controller**
-Encoder-based odometry provides high-frequency (~50 Hz) relative motion estimates. The base controller translates `/cmd_vel` into motor PWM. **Tuning parameters:** wheel radius, track width, encoder counts per revolution, drift compensation. Accurate calibration is essential for localization—odometry drift must remain <30 cm over 30 seconds. Both feed SLAM during pre-mapping and AMCL during mission.
+- **Wheel Odometry & Base Controller:** Encoder-based odometry at ~50 Hz; controller translates `/cmd_vel` to motor PWM. Tune: wheel radius, track width, drift compensation (<30 cm over 30 sec).
 
-**Camera Driver**
-Publishes RGB image frames at 15–30 Hz to `/camera/image_raw`. Must include precomputed intrinsic calibration (focal length, principal point, distortion) in a ROS 2 camera_info YAML file. **Tuning parameters:** resolution, frame rate, distortion coefficients. Calibration accuracy directly impacts ArUco pose estimation error in the camera frame.
+- **Camera Driver:** Publishes RGB frames at 15–30 Hz with precomputed intrinsic calibration. Tune: resolution, frame rate, distortion coefficients.
 
-**SLAM Toolbox (Pre-Mapping Phase)**
-Standard ROS 2 Jazzy SLAM front-end for 2D LiDAR. Performs scan matching and loop closure to build a globally consistent occupancy grid. **Tuning parameters:** loop closure threshold, minimum travel distance, occupancy probability threshold. During pre-mapping, processes `/scan` and odometry into `/map` and publishes transforms (map ↔ odom ↔ base_link). After exploration, map_saver serializes the grid to disk.
+- **SLAM Toolbox:** Standard ROS 2 SLAM front-end for 2D LiDAR. Builds occupancy grid via scan matching and loop closure. Tune: loop closure threshold, min travel distance, occupancy threshold.
 
-**Map Server & AMCL (Mission Phase)**
-Map Server loads precomputed occupancy grid from disk. AMCL localizes against this fixed map by matching real-time LiDAR scans, correcting odometry drift via the map→odom transform. **AMCL tuning:** particle count (50–500), scan matching model (beam or likelihood_field), initial pose covariance, update rates (~10 Hz). Grounding all downstream frame transformations (e.g., camera to map).
+- **Map Server:** Loads precomputed occupancy grid from disk for mission phase.
 
-**Local Costmap (nav2_costmap_2d)**
-Maintains a rolling 5×5 m window around the robot, updated in real-time from LiDAR. Marks both pre-mapped obstacles (static layer) and dynamic obstacles detected by LiDAR (obstacle layer). **Tuning parameters:** decay rate, unknown threshold, inflation radius, update frequency. When target is occluded, costmap accumulates unknown obstacles; Nav2 controller replans around them.
+- **AMCL:** Localizes against static map by matching LiDAR scans; corrects odometry drift. Tune: particle count (50–500), scan matching model, update rates.
 
-**Nav2 Planner & Controller**
-Global planner (NavFn/Theta*) computes collision-free paths using the occupancy grid; local controller (DWB) tracks paths while avoiding real-time obstacles. **Planner tuning:** potential scale, lethal cost threshold, planning timeout. **Controller tuning:** max velocity, angular velocity limits, acceleration limits, lookahead distance. Pre-Mapping: inactive. Mission: receives dynamic goals from Target Coordinator.
+- **Local Costmap:** Maintains rolling 5×5 m window, marks pre-mapped and dynamic obstacles. Tune: decay rate, inflation radius, update frequency.
 
-**TF2 System**
-Canonical ROS 2 transform management. Maintains tree: map ← odom ← base_link ← {lidar_frame, camera_frame}. Enables timestamp-aware coordinate conversions across all modules. **Configuration:** static transforms (sensor mounting offsets) via StaticTransformBroadcaster; dynamic transforms (AMCL, odometry) via TransformBroadcaster.
+- **Nav2 Planner & Controller:** Global planner (NavFn) + local controller (DWB). Tune planner: potential scale, lethal cost threshold. Tune controller: max velocity, acceleration limits, lookahead distance.
+
+- **TF2 System:** Manages coordinate frame transformations (map ← odom ← base_link). Configure: static transforms (sensor offsets), dynamic transforms (AMCL, odometry).
+
+- **Base Controller:** Translates motor commands from Nav2.
 
 ---
 
