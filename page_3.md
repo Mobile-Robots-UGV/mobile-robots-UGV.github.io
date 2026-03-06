@@ -201,73 +201,43 @@ Publishes RGB image frames (or RGBD if available) at 15–30 Hz to `/camera/imag
 #### 3.3.2 SLAM & Mapping
 
 **SLAM Toolbox**
-- **Type:** Library
 - **Why chosen:** SLAM Toolbox is the standard ROS 2 Jazzy SLAM front-end for 2D LiDAR on indoor platforms. It performs scan matching and loop closure detection to build a globally consistent 2D occupancy grid. During pre-mapping, the robot is teleoperated through the environment via `/cmd_vel`; SLAM processes incoming `/scan` data and odometry into `/map` and publishes transforms (map ↔ odom ↔ base_link). After exploration, `map_saver` CLI tool is invoked to serialize the map to disk (.pgm image + .yaml metadata).
-- **Key tuning parameters:**
-  - **Loop closure threshold:** Aggressiveness of loop detection (higher = fewer false closures).
-  - **Minimum travel distance:** Distance before loop closure search; balances speed vs. global quality.
-  - **Occupancy threshold:** Frontier between free and occupied cells in the map.
-- **Edge cases:** Repetitive environments (long corridors, identical textures) may cause loop closure failures or inconsistent maps. Requires manual teleoperation discipline and RViz verification.
 
 **Map Saver (nav2_map_server)**
-- **Type:** Library
 - **Why chosen:** After SLAM exploration completes, `map_saver` is invoked (one-shot) to subscribe to `/map`, serialize it, and write the occupancy grid (`.pgm` image) and metadata (`.yaml` with resolution, origin, occupied/free thresholds) to disk. This saved map is later loaded by Map Server during the mission phase.
-- **Key parameters:**
-  - **Output directory:** Where .pgm and .yaml files are saved.
-  - **Map resolution:** Inherited from SLAM; typically 0.05 m/cell.
-  - **Thresholds:** Occupied/free cost thresholds applied during serialization.
 
 #### 3.3.3 Localization
 
 **AMCL (Adaptive Monte Carlo Localization)**
-- **Type:** Library
 - **Why chosen:** During the mission phase, the robot must localize against the pre-built static map produced in Phase 1. AMCL is the standard Monte Carlo localization package for ROS 2 Jazzy. It subscribes to real-time `/scan` and the fixed `/map`, performing scan-to-map matching to correct odometry drift and estimate the robot's pose in the global map frame. AMCL publishes `/amcl_pose` and the map→odom transform, grounding all downstream transformations (e.g., camera frame to map frame).
 - **Key tuning parameters:**
   - **Particle count:** 50–500 particles; higher accuracy trades off against CPU load.
   - **Initial pose uncertainty:** Covariance for pose initialization; should match expected pre-mission localization error.
   - **Scan matching model:** `beam` or `likelihood_field`; affects convergence and robustness.
   - **Update rates:** Publication frequency (~10 Hz typical) and scan update period; balance latency vs. CPU.
-- **Edge cases:**
-  - Global kidnapping (robot moved without encoder feedback) requires manual re-localization.
-  - Indistinguishable map regions (uniform empty spaces) cause multimodal posteriors; monitor particle cloud divergence in RViz.
-  - Sparse, featureless maps may cause divergence.
 
 #### 3.3.4 Costmaps & Obstacle Representation
 
 **Local Costmap Server (nav2_costmap_2d)**
-- **Type:** Library
 - **Why chosen:** Nav2's local costmap server maintains a 2.5D rolling window (e.g., ±2.5 m) centered on the robot, updated in real-time from LiDAR scans. Its **obstacle layer** marks both mapped obstacles (from the static map layer) and unknown obstacles (dynamic, unmodeled). The global costmap is slower-updating and derived from the static pre-mapped occupancy grid. Together, they enable Nav2's planner (global costmap) and controller (local costmap) to navigate while avoiding real-time hazards.
 - **Unknown obstacle handling:**
   - Real-time LiDAR hits populate the local costmap's obstacle layer.
   - Cells in the obstacle layer that don't correspond to the static map are marked as **unknown obstacles**.
   - The obstacle layer decays over time (decay_rate); unobserved cells gradually clear, preventing phantom obstacles.
   - When an unknown obstacle occludes the target, Nav2 replans using the updated local costmap layers.
-- **Key tuning parameters:**
-  - **Decay rate:** Controls how fast unobserved obstacles clear; shorter decay = more responsive to transient obstacles.
-  - **Unknown cost threshold:** Cost value marking unknown obstacles (typically 254 for binary occupancy).
-  - **Inflation radius:** Expands obstacle cost gradient; prevents goal placement in tight spaces.
-  - **Update frequency:** 5–10 Hz; balance responsiveness with CPU load.
 
 #### 3.3.5 Planning & Control
 
 **Nav2 Stack (Planner & Controller)**
-- **Type:** Library
 - **Why chosen:** Nav2 (Navigation 2) is the industrial-standard motion planning and control middleware for ROS 2. It provides both **global planning** (e.g., NavFn or Theta*) to compute a path from start to goal, and **local control** (e.g., Dynamic Window Approach (DWB) or MPPI) to track that path while avoiding obstacles detected in real-time by the local costmap.
 - **Behavioral modes:**
   - **Pre-mapping:** Nav2 is inactive; manual teleoperation controls `/cmd_vel`.
   - **Mission (target visible):** Nav2 is active; the Coordinator publishes dynamic goal poses derived from ArUco detections. Nav2 recomputes the global plan and maintains local tracking.
   - **Mission (target occluded, unknown obstacle present):** Nav2 is still active but the goal is static (last-known target pose). The local costmap accumulates unknown obstacles; Nav2's controller re-plans a path around them.
-- **Key tuning parameters:**
-  - **Planner (Navfn/Theta*):** Lethal cost threshold, potential scale; these define cost-to-distance mapping for path quality.
-  - **Controller (DWB/MPPI):** Maximum linear and angular velocities, acceleration limits, lookahead distance, scoring weights for trajectory evaluation.
-- **Edge cases & recovery:**
-  - If a goal is placed in a collision cell, Nav2's goal checker may fail. The Coordinator must validate goal poses before publishing.
-  - If the robot is trapped, Nav2 publishes control signals even if no path exists; the controller may rotate in place. The Coordinator monitors this and can trigger the SEARCH state.
 
 #### 3.3.6 Transform System (TF2)
 
 **TF2 Broadcaster (Transform Tree)**
-- **Type:** Library
 - **Why chosen:** TF2 is ROS 2's canonical system for managing coordinate frame transformations. It maintains a tree of transforms (map ← odom ← base_link ← sensor_frames) and allows any node to query the spatial relationship between any two frames at any timestamp.
 - **Transform tree structure:**
   - **map (static):** Global reference frame; produced by SLAM (pre-mapping) or provided by map server (mission).
@@ -281,24 +251,17 @@ Publishes RGB image frames (or RGBD if available) at 15–30 Hz to `/camera/imag
 #### 3.3.7 Perception: ArUco Marker Detection (Custom)
 
 **ArUco Detector**
-- **Type:** Custom
 - **Key responsibility:** Detect ArUco markers in camera images, compute their 3D pose relative to the camera frame, and publish to `/detected_aruco_pose`.
 - **Core algorithm:**
   1. Subscribe to `/camera/image_raw` at camera frame rate (15–30 Hz).
   2. Apply OpenCV's ArUco detection pipeline: detect candidate marker corners using adaptive thresholding, validate corner patterns against the ArUco dictionary (e.g., DICT_5X5_100), reject false positives using confidence thresholding.
   3. Use solvePnP to compute marker 3D pose in the camera frame using known marker size and camera intrinsics.
   4. Publish pose as `geometry_msgs/PoseStamped` with `frame_id = camera_frame` to `/detected_aruco_pose`.
-- **Edge cases & robustness:**
-  - **False positives:** Clutter or reflections can trigger false detections. Mitigation: confidence thresholding and spatial filtering.
-  - **Intermittent detections:** Occlusion, motion blur, or glints make detection intermittent. The Coordinator maintains a detection history and performs temporal smoothing.
-  - **Scale ambiguity:** Marker size must be calibrated and fixed before mission.
-  - **Multiple markers in frame:** Preferentially select the nearest or largest based on application intent.
 - **Success criteria:** Detects target marker at distances 0.5–3 m with <5% pose error; recovers from 1–2 frame intermittent occlusions; rejects false positives at >95% rate.
 
 #### 3.3.8 Goal Generation from ArUco (Custom)
 
 **Goal Generator from ArUco**
-- **Type:** Custom
 - **Key responsibility:** Transform ArUco-detected pose from camera frame to map frame, compute a reachable goal pose slightly offset from the target, and publish to `/target_goal_pose`.
 - **Core algorithm:**
   1. Subscribe to `/detected_aruco_pose` (in camera_frame).
@@ -307,13 +270,11 @@ Publishes RGB image frames (or RGBD if available) at 15–30 Hz to `/camera/imag
   4. Compute goal pose as a point **offset behind the target** (e.g., 0.5 m in the direction opposite to the robot's approach).
   5. Apply optional temporal smoothing (moving average over last N detections) to reduce jitter.
   6. Publish goal to `/target_goal_pose` at ~10 Hz.
-- **Edge cases:** TF chain breaks (logs error and skips), ambiguous orientation (heuristic resolution), large pose jumps (temporal smoothing or rejection of jumps >0.5 m).
 - **Success criteria:** Transforms ArUco pose to map frame with <0.1 m error; goal pose always reachable; temporal jitter <0.2 m s.d.
 
 #### 3.3.9 Target Follow + Loss Recovery Coordinator (Custom)
 
 **Target Follow + Loss Recovery Coordinator**
-- **Type:** Custom
 - **Key responsibility:** Implement a state machine (FOLLOW → LOST → SEARCH) to coordinate target-following behavior and recovery from occlusion-induced loss, sending Nav2 goals via `/navigate_to_pose` action.
 - **Core state machine:**
   - **FOLLOW:** Target continuously detected. Subscribe to `/detected_aruco_pose` and query Goal Generator's latest `/target_goal_pose`. Send goals to Nav2 at 5–10 Hz.
@@ -327,9 +288,7 @@ Publishes RGB image frames (or RGBD if available) at 15–30 Hz to `/camera/imag
 #### 3.3.10 Visualization & Diagnostics
 
 **RViz / Monitoring Node**
-- **Type:** Library / Optional Custom
 - Publishes visualization markers for map, robot pose, detected target, costmaps, and particle cloud. Critical for manual validation during development and mission monitoring. RViz configuration files specify which topics to display and layer ordering.
-- **Optional custom diagnostics node:** Aggregates module health (AMCL convergence, detection drop rate, loss event count) for real-time mission status.
 
 ---
 
