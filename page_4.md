@@ -48,6 +48,7 @@ Timeouts Logic decides when the robot must stop, slow down, or switch into a dif
 
 ### 4.5 Emergency Stop(E-Stop) Conditions
 The E-Stop defines the highest-priority safety mechanism. It forces irreversible motor shutdown until a human operator manually resets the system.
+
 **The E-Stop happens when:**
   - Wheel-drop triggered.
   - Cliff sensor triggered.

@@ -7,7 +7,7 @@ nav_order: 3
 
 ## 3. High-Level System Architecture
 
-This autonomous mobile robot system implements two-phase operation: **(A) Pre-Mapping** to build a static 2D occupancy grid, and **(B) Mission** to autonomously follow a moving ArUco marker-bearing target while reactively avoiding unknown obstacles. The architecture integrates perception (LiDAR + camera), localization (AMCL), motion planning (Nav2), and custom coordination logic to handle target loss due to occlusion and recover through local replanning.
+This autonomous mobile robot system operates in 2 phases: **(A) Pre-Mapping** to build a static 2D occupancy grid, and **(B) Mission** to autonomously follow a moving ArUco marker-bearing target while reactively avoiding unknown obstacles. The architecture integrates perception (LiDAR + camera), localization (AMCL), motion planning (Nav2), and custom coordination logic to handle target loss due to occlusion and recover through local replanning.
 
 ### 3.1 System Data Flow Diagrams
 
@@ -333,44 +333,7 @@ Publishes RGB image frames (or RGBD if available) at 15–30 Hz to `/camera/imag
 
 ---
 
-### 3.4 Algorithmic Abstract
-
-**Objective & Overview:**
-An autonomous mobile robot must visually track a moving target bearing an ArUco marker while avoiding both pre-mapped static obstacles and dynamically detected unknown obstacles. The system architecture integrates two operational phases: **(A) pre-mapping**, during which SLAM Toolbox builds a static 2D occupancy grid via teleoperated exploration, saved using `map_saver` CLI, and **(B) mission**, during which the robot localizes against the saved map using AMCL and pursues a dynamic goal generated from real-time ArUco marker detections via nav2_msgs actions.
-
-**Mission Criticality:**
-The primary challenge in the mission phase is handling **occlusion-induced target loss**. When an unknown obstacle physically obstructs the line of sight between the robot's camera and the target marker, two inter-dependent failures occur: (1) the ArUco detector loses visual contact and (2) the robot cannot update its pursuit goal. The system must detect this failure mode, freeze the goal at the last-known target position, trigger local replanning via Nav2 to circumvent the newly-detected obstacle, and subsequently recover visual contact.
-
-**System Architecture:**
-
-*Perception.* Two parallel sensing modalities feed the system: (i) 2D LiDAR (`/scan`, 10–25 Hz) for simultaneous localization (AMCL), global costmap construction, and unknown obstacle detection via the local obstacle layer in nav2_costmap_2d; (ii) RGB camera (`/camera/image_raw`, 15–30 Hz) for ArUco marker detection via OpenCV's ArUco pipeline, yielding marker pose in the camera frame.
-
-*Estimation & Coordination.* **AMCL** subscribes to `/scan` and pre-mapped `/map` to correct odometry drift and publish `/amcl_pose` in the map frame, grounding all subsequent transformations. A custom **ArUco Detector** performs real-time marker detection with confidence thresholding and spatial filtering. Detected pose is transformed to map frame via TF2 and forwarded to a custom **Goal Generator**, which computes an offset goal (e.g., 0.5 m from target) ensuring reachability. A state-machine-based **Target Follow + Loss Recovery Coordinator** monitors detection status and obstacle accumulation, sending goals to Nav2 via the `NavigateToPose` action server to orchestrate three behavioral states:
-
-1. **FOLLOW:** Target is continuously detected; dynamic goal updates flow to Nav2 at ~5 Hz. Nav2's planner (NavFn/Theta*) and controller (DWB/MPPI) track the moving goal while avoiding mapped obstacles via the global costmap.
-2. **LOST:** N ≥5 consecutive ArUco frame misses AND local costmap raytrace confirms line-of-sight blockage. The Coordinator freezes the goal at last-known target pose and starts a loss timer (2–5 sec). Nav2 remains active; it replans the path around the newly-detected obstacle using the local costmap.
-3. **SEARCH (optional):** If the loss timeout expires without re-detection, the Coordinator initiates a recovery search behavior for 15–30 sec to increase visibility range and re-acquire the target.
-
-*Actuation.* Nav2 outputs control commands (`/cmd_vel`) that are executed by the differential-drive base.
-
-**Unknown Obstacle Handling:**
-Unknown obstacles are represented in nav2_costmap_2d's obstacle layer as cells marked from real-time LiDAR hits that do not correspond to pre-mapped free cells. A decay mechanism clears unmarked cells over time, preventing permanent phantom obstacles. When an unknown obstacle occludes the target, the coordinator detects the loss event (visual + costmap evidence), freezes the last-known goal, and Nav2 recomputes a path around the obstacle. Once the obstacle is cleared and the target re-appears, FOLLOW resumes.
-
-**Edge Cases & Robustness:**
-- *False occlusion:* Intermittent frame-level ArUco losses do not trigger LOST; the system requires N ≥5 consecutive misses plus costmap raytrace confirmation.
-- *Phantom obstacles:* Transient LiDAR noise is mitigated by requiring obstacle cells to persist across 2+ updates; costmap decay clears unobserved cells over time.
-- *Goal unreachability:* The Goal Generator validates computed goals against the costmap; if unreachable, it offsets sideways or closer.
-- *Search timeout:* If target moves beyond search range, the system times out at max 60 sec and returns to FOLLOW.
-
-**Success Metrics:**
-- Pre-mapping: Static map resolution ≥5 cm/cell with <2% unexplored area.
-- Mission (tracking): Maintains visual contact ≥90% of mission time when target is visible and unobstructed.
-- Mission (loss recovery): Detects occlusion within 0.5 sec; re-acquires target within 10 sec; avoids unnecessary detours (>50 cm inflation).
-- Robustness: Recovers from 90%+ of temporary occlusions; gracefully degrades if permanent loss occurs.
-
----
-
-### 3.5 Terminology Reference
+### 3.4 Terminology Reference
 
 | Term | Definition |
 |---|---|
