@@ -244,9 +244,6 @@ Publishes RGB image frames (or RGBD if available) at 15–30 Hz to `/camera/imag
   - **odom ← map (updating):** Produced by AMCL; corrects for odometry drift.
   - **base_link ← odom (continuous):** Produced by wheel odometry; high-frequency relative motion tracking.
   - **Sensor frames (static relative to base_link):** `lidar_frame`, `camera_frame`, `aruco_marker` (dynamic, detected by ArUco module)
-- **Key tuning parameters:**
-  - **Broadcaster rates:** How often tf messages are published (typically 50–100 Hz for dynamic transforms).
-  - **Frame names:** Must match sensor manufacturer specs and be consistent across launch files.
 
 #### 3.3.7 Perception: ArUco Marker Detection (Custom)
 
@@ -282,7 +279,6 @@ Publishes RGB image frames (or RGBD if available) at 15–30 Hz to `/camera/imag
   - **LOST:** Goal is static (last-known target). Nav2 recomputes path around obstacles. Monitor for re-detection or obstacle clearing.
   - **LOST → SEARCH transition:** Loss timeout expires (≥5 sec) and ArUco still absent.
   - **SEARCH:** Execute rotational sweep or frontier-based movement for 15–30 sec. On re-detection, immediately transition to FOLLOW.
-- **Edge cases:** (1) False occlusion: require 5 consecutive misses + costmap raytrace. (2) Phantom obstacles: validate cells persist across 2+ updates. (3) Goal unreachability: Goal Generator validates against costmap. (4) Search timeout: max 60 sec, then return to FOLLOW.
 - **Success criteria:** Detect occlusion within 0.5 sec; re-acquire target within 10 sec; avoid >50 cm unnecessary detours; recover 90%+ of loss events.
 
 #### 3.3.10 Visualization & Diagnostics
