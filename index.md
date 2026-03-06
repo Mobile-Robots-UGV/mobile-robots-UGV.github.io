@@ -1,5 +1,5 @@
 ---
-title: 1 Proposal & Specifications
+title: Home
 layout: home
 nav_order: 1
 ---
