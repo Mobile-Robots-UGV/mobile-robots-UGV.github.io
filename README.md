@@ -1,36 +1,23 @@
-# Boiler Plate Code for Course Assignment Webpage 
-This is a fork of a *bare-minimum* template to create a [Jekyll] site that:
+# SmartFollower & Tracker (SFT) — Documentation Website
 
-- uses the [Just the Docs] theme;
-- can be built and published on [GitHub Pages];
-- can be built and previewed locally, and published on other platforms.
+This repository hosts the documentation site for **SmartFollower & Tracker (SFT)**: an indoor **TurtleBot 4–based** autonomous system that detects, tracks, and safely follows a designated **Object of Interest (OOI)** in a dynamic warehouse/packaging environment, while avoiding obstacles and producing a **2D reconstruction** (map + trajectory + time-stamped evidence) for anomaly investigation and audit.
 
-More specifically, the created site:
+## What SFT Does
 
-- uses a gem-based approach, i.e. uses a `Gemfile` and loads the `just-the-docs` gem;
-- uses the [GitHub Pages / Actions workflow] to build and publish the site on GitHub Pages.
+SFT is designed for indoor warehouse/factory logistics zones with dynamic obstacles, frequent occlusions, and shared human–robot space constraints. The system aims to:
+- Acquire an OOI using onboard sensors
+- Track the OOI robustly (including temporary occlusions)
+- Follow while maintaining safety constraints (distance/speed/collision avoidance)
+- Reacquire the OOI after loss or transition to safe fallback behavior
+- Export a 2D occupancy map, robot trajectory, and time-stamped OOI observations.
 
-To get started with creating a site, simply:
+## Documentation Structure
 
-1. click "[use this template]" to create a GitHub repository
-2. go to Settings > Pages > Build and deployment > Source, and select GitHub Actions
+The site content is organized into the following pages (see the navigation on the deployed site):
+- **Home (Mission & Scope):** environment, constraints, scope, and measurable acceptance criteria 
+- **Technical Specifications:** TurtleBot 4 platform, kinematics, baseline sensors, and safety/hazard sensing stack
+- **Architecture:** two-phase workflow (pre-mapping + mission), data-flow diagram, state machine, and module table (Perception → Estimation → Planning → Actuation)
+- **Safety & Operational Protocol:** sensor-based safety layers, physical constraints, deadman switch, timeouts, and E-stop conditions
+- **Git Infrastructure:** shared repository link and submodule note
+- **Project Schedule:** week-by-week plan and milestones
 
-If you want to maintain your docs in the `docs` directory of an existing project repo, see [Hosting your docs from an existing project repo](#hosting-your-docs-from-an-existing-project-repo).
-
-After completing the creation of your new site on GitHub, update it as needed:
-
-----
-
-[^1]: [It can take up to 10 minutes for changes to your site to publish after you push the changes to GitHub](https://docs.github.com/en/pages/setting-up-a-github-pages-site-with-jekyll/creating-a-github-pages-site-with-jekyll#creating-your-site).
-
-[Jekyll]: https://jekyllrb.com
-[Just the Docs]: https://just-the-docs.github.io/just-the-docs/
-[GitHub Pages]: https://docs.github.com/en/pages
-[GitHub Pages / Actions workflow]: https://github.blog/changelog/2022-07-27-github-pages-custom-github-actions-workflows-beta/
-[Bundler]: https://bundler.io
-[use this template]: https://github.com/just-the-docs/just-the-docs-template/generate
-[`jekyll-default-layout`]: https://github.com/benbalter/jekyll-default-layout
-[`jekyll-seo-tag`]: https://jekyll.github.io/jekyll-seo-tag
-[MIT License]: https://en.wikipedia.org/wiki/MIT_License
-[starter workflows]: https://github.com/actions/starter-workflows/blob/main/pages/jekyll.yml
-[actions/starter-workflows]: https://github.com/actions/starter-workflows/blob/main/LICENSE
