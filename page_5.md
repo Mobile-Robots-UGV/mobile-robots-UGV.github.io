@@ -1,12 +1,13 @@
 ---
-title: 5 Git Infrastructure & Timeline
+title: 5 Git Infrastructure
 layout: home
 nav_order: 5
 ---
 
 ## 5. Git Infrastructure
-### 5.1 Link to shared team repository
-<https://github.com/Mobile-Robots-UGV/mobile-robots-UGV.github.io>
+### 5.1 Link to shared team repositories
+
+<https://github.com/orgs/Mobile-Robots-UGV/repositories>
 
 
 
