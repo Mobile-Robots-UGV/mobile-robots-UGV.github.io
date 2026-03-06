@@ -50,3 +50,8 @@ Wheel mapping (for reference; r = wheel radius, L = wheel separation):
   - Justification: mitigates single-plane LiDAR limitations (low/high obstacles, near-base blind regions).
 - **Operator annunciation (LED/beeper) (operational safety enhancement):**
   - Justification: improves human awareness when robot enters follow/chase modes.
+
+
+## References 
+[1] E. Olson, “AprilTag: A robust and flexible visual fiducial system,” *Proc. IEEE ICRA*, 2011.  
+<!-- [2] A. Bewley *et al.*, “Simple Online and Realtime Tracking,” arXiv:1602.00763, 2016.  -->

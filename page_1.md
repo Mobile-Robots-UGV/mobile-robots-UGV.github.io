@@ -73,8 +73,3 @@ Given a dynamic indoor warehouse environment without GPS, develop a mobile robot
 ---
 
 
-
-
-## 3. References 
-[1] E. Olson, “AprilTag: A robust and flexible visual fiducial system,” *Proc. IEEE ICRA*, 2011.  
-<!-- [2] A. Bewley *et al.*, “Simple Online and Realtime Tracking,” arXiv:1602.00763, 2016.  -->
