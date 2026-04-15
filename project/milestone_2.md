@@ -1,8 +1,8 @@
 ---
-title: Report 2
-layout: home
-nav_order: 2
+layout: default
+title: Milestone 2
 parent: Project
+nav_order: 1
 ---
 
 ## Milestone 2: Mid-Point Technical Proof
