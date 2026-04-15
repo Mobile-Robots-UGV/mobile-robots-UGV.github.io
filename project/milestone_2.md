@@ -11,21 +11,23 @@ nav_order: 1
 
 ## 1. Kinematics
 
-The TurtleBot 4 uses a differential drive motion model. The robot state is defined as
+The TurtleBot 4 uses a differential drive motion model. The robot state is defined as:
+
 $$\mathbf{x} = [x, y, \theta]^T$$
-where $x$, $y$ is the position and $\theta$ is the heading angle.
 
-Given control inputs linear velocity $v$ and angular velocity $\omega$, the state update over timestep $\Delta t$ is:
+where $$x$$, $$y$$ is the position and $$\theta$$ is the heading angle.
 
-$$\begin{bmatrix} x_{t+1} \\ y_{t+1} \\ \theta_{t+1} \end{bmatrix} = \begin{bmatrix} x_t + v \cos(\theta_t)\,\Delta t \\ y_t + v \sin(\theta_t)\,\Delta t \\ \theta_t + \omega\,\Delta t \end{bmatrix}$$
+Given control inputs linear velocity $$v$$ and angular velocity $$\omega$$, the state update over timestep $$\Delta t$$ is:
+
+$$\begin{bmatrix} x_{t+1} \\ y_{t+1} \\ \theta_{t+1} \end{bmatrix} = \begin{bmatrix} x_t + v \cos(\theta_t) \Delta t \\ y_t + v \sin(\theta_t) \Delta t \\ \theta_t + \omega \Delta t \end{bmatrix}$$
 
 In our coordinator node, the control inputs are computed directly from the board pose in camera frame using a proportional controller:
 
-$$v = K_{\text{lin}} \cdot (z_{\text{board}} - d_{\text{target}})$$
+$$v = K_{lin} \cdot (z_{board} - d_{target})$$
 
-$$\omega = -K_{\text{ang}} \cdot x_{\text{board}}$$
+$$\omega = -K_{ang} \cdot x_{board}$$
 
-where $z_{\text{board}}$ is the board depth (distance from camera), $x_{\text{board}}$ is the lateral offset, $d_{\text{target}} = 0.5\,\text{m}$ is the desired follow distance, and $K_{\text{lin}} = 0.5$, $K_{\text{ang}} = 1.0$ are the proportional gains.
+where $$z_{board}$$ is the board depth (distance from camera), $$x_{board}$$ is the lateral offset, $$d_{target} = 0.5$$ m is the desired follow distance, and $$K_{lin} = 0.5$$, $$K_{ang} = 1.0$$ are the proportional gains.
 
 ---
 
@@ -151,6 +153,6 @@ Since the static TF publishes `map → camera_frame` at the origin with zero rot
 
 | Team Member | Primary Technical Role | Key Contributions |
 |---|---|---|
-| Lu Yan Tan | Perception & Detection | `aruco_detector.py` — ArUco detection, solvePnP, TF broadcast, RViz2 markers |
-| Prajjwal | Prediction & Goal Generation | `goal_generator.py` — velocity estimation, future position prediction, RViz2 visualization |
-| Tatwik Meesala | State Machine & Control | `coordinator.py` — FOLLOW/LOST/SEARCH state machine, proportional velocity controller |
+| Tatwik Meesala | State Machine & Control | `aruco_detector.py` — ArUco detection, SolvePnP, Image compression, Hardware implementation |
+| Prajjwal | Prediction & Goal Generation | `goal_generator.py` — Future position prediction, SLAM, Simulation, Hardware implementation |
+| Lu Yan Tan | Perception & Detection | `coordinator.py` — TF broadcast, RViz2 visualization, FOLLOW/LOST/SEARCH state machine, Hardware implementation |
