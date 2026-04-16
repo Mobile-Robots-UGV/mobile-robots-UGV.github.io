@@ -209,7 +209,7 @@ This module is the behavior and control layer of the mid-point system. It consum
 
 - **FOLLOW**: track the target using proportional distance and heading control
 - **LOST**: stop the robot and wait briefly for re-detection
-- **SEARCH**: rotate in place to reacquire the target
+- **SEARCH**: wait and do something for the target to be re-acquired
 
 State transitions are driven by board visibility and timeout logic.  
 At mid-point, this gives the system a practical target-following capability with basic robustness to occlusion and intermittent perception failure.
