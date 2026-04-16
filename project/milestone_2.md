@@ -50,15 +50,29 @@ Given control inputs linear velocity $$v$$ and angular velocity $$\omega$$, the 
 
 $$\begin{bmatrix} x_{t+1} \\ y_{t+1} \\ \theta_{t+1} \end{bmatrix} = \begin{bmatrix} x_t + v \cos(\theta_t) \Delta t \\ y_t + v \sin(\theta_t) \Delta t \\ \theta_t + \omega \Delta t \end{bmatrix}$$
 
-In our current mid-point system, the coordinator ultimately generates control inputs from the detected and predicted board motion expressed in camera frame. At this stage, the control law is still a proportional tracking controller, but it is embedded inside a larger perception → goal generation → coordination pipeline:
+In our current mid-point system, the coordinator generates control inputs directly from the detected board pose expressed in camera frame. The control law is a proportional tracking controller embedded inside a larger perception → goal generation → coordination pipeline. These equations describe the low-level follow behavior used by the coordinator; however, the complete system also includes target detection, short-horizon prediction, and recovery behavior when the board is temporarily lost.
 
-These equations describe the low-level follow behavior used by the coordinator; however, the complete system also includes target detection, short-horizon prediction, and recovery behavior when the board is temporarily lost.
+$$v = \text{clip}\bigl(K_{lin} \cdot (z_{board} - d_{target}),\ -v_{max},\ +v_{max}\bigr)$$
 
-$$v = K_{lin} \cdot (z_{board} - d_{target})$$
+$$\omega = \text{clip}\bigl(-K_{ang} \cdot x_{board},\ -\omega_{max},\ +\omega_{max}\bigr)$$
 
-$$\omega = -K_{ang} \cdot x_{board}$$
+where $$z_{board}$$ is the board depth (distance from camera), $$x_{board}$$ is the lateral offset, and the controller parameters are:
 
-where $$z_{board}$$ is the board depth (distance from camera), $$x_{board}$$ is the lateral offset, $$d_{target} = 0.5$$ m is the desired follow distance, and $$K_{lin} = 0.5$$, $$K_{ang} = 1.0$$ are the proportional gains.
+| Parameter | Value | Description |
+|---|---|---|
+| $$d_{target}$$ | $$0.65$$ m | Desired follow distance |
+| $$K_{lin}$$ | $$0.8$$ | Proportional gain for linear velocity |
+| $$K_{ang}$$ | $$2.0$$ | Proportional gain for angular velocity |
+| $$v_{max}$$ | $$0.15$$ m/s | Maximum linear speed (forward and backward) |
+| $$\omega_{max}$$ | $$0.6$$ rad/s | Maximum angular speed |
+
+Errors smaller than a deadband threshold are zeroed before computing the control output, preventing jitter when the board is approximately centered:
+
+$$z_{error} = \begin{cases} 0 & \text{if } |z_{board} - d_{target}| < 0.03\ \text{m} \\ z_{board} - d_{target} & \text{otherwise} \end{cases}$$
+
+$$x_{error} = \begin{cases} 0 & \text{if } |x_{board}| < 0.02\ \text{m} \\ x_{board} & \text{otherwise} \end{cases}$$
+
+The linear velocity is clamped symmetrically to $$[-v_{max}, +v_{max}]$$, allowing the robot to drive backward when the board is closer than $$d_{target}$$. This prevents the robot from stalling against the target if it approaches too close.
 
 ---
 
@@ -97,10 +111,11 @@ graph LR
 ```
 
 RQT graph:
+
 ![alt text](image.png)
 
 
-### 2.2 Topics
+Topics:
 
 | Topic | Message Type | Publisher | Subscriber / Consumer |
 |---|---|---|---|
@@ -118,9 +133,9 @@ RQT graph:
 
 ---
 
-## 3. Module Descriptions
+### 2.2 Module Descriptions
 
-### 3.1 Module Declaration Table
+Module Declaration Table:
 
 | Module | Type | Status | Role in System | Source File |
 |---|---|---|---|---|
@@ -131,15 +146,18 @@ RQT graph:
 | Static TF / frame setup | System | Completed | Provides frame consistency for visualization and integration | launch/config |
 | RViz2 visualization | System | Completed | Displays detections, goals, and controller state | RViz2 config |
 
-### 3.2 aruco_detector.py
+#### 2.2.1 aruco_detector.py
 
-This module is the perception front end of the system. It subscribes to the TurtleBot 4 OAK-D compressed RGB topic and decodes each frame for OpenCV ArUco processing. Using the configured 4-marker board geometry and camera calibration, it estimates the board pose with `solvePnP`.
+This module is the perception front end of the system. It subscribes to the TurtleBot 4 OAK-D compressed RGB topic and decodes each compressed frame using `cv2.imdecode` for OpenCV ArUco processing. Using the configured 4-marker board geometry and camera calibration, it estimates the board pose with `solvePnP`. The core detection and pose computation methods are based on `board_pose_ros` implementation, which was tested and validated on real TurtleBot 4 hardware.
 
 Implemented functionality includes:
 
-- compressed image subscription and decoding
-- 4-marker board detection using `DICT_6X6_250`
-- 6-DoF board pose estimation in camera frame
+- compressed image subscription and decoding via `np.frombuffer` + `cv2.imdecode`
+- 4-marker board detection using `cv2.aruco.detectMarkers` directly with `DICT_6X6_250`
+- board object point construction via a 2D rotation matrix applied per-marker (not corner reordering)
+- 6-DoF board pose estimation in camera frame using `solvePnP`
+- robust quaternion conversion from rotation matrix using a 4-case singularity-safe method
+- RPY extraction from rotation matrix with singularity handling
 - exponential moving average smoothing (`alpha = 0.25`)
 - board visibility reporting
 - TF broadcast from `camera_frame` to `board_frame`
@@ -155,26 +173,37 @@ Published outputs:
 
 All values are expressed using camera-frame convention: `+X = right`, `+Y = down`, `+Z = forward`.
 
-### 3.3 goal_generator.py
+#### 2.2.2 goal_generator.py
 
-This module extends the baseline board-pose pipeline into a tracking-oriented system. Rather than using only the instantaneous board pose, the node maintains a short history of recent detections and estimates target velocity using linear regression over time.
+This module currently serves as a **placeholder passthrough** in the mid-point system. In its present form, it forwards the `/detected_aruco_pose` topic directly to `/target_goal_pose` with minimal processing, allowing the coordinator to function end-to-end on hardware while the full prediction backend is being integrated. This placeholder will be replaced by Prajjwal's state estimation and prediction stack for the final system.
 
-The predicted future target position is computed as:
+---
 
-$$\text{pred} = \text{pos}_{\text{current}} + \mathbf{v} \cdot t_{\text{predict}}$$
+**Planned Replacement: State Estimation and Prediction System done in the Simulation**
 
-where $t_{\text{predict}} = 0.5\,\text{s}$.
+The production goal generator will be grounded in a rigorous probabilistic state estimation framework that is developed independently as part of the broader project. Rather than simply forwarding the last detected pose, the replacement module applies a multi-filter sensor fusion pipeline to produce a smoothed, forward-predicted target goal.
 
-A follow goal is then generated by offsetting the predicted target position by a configurable stand-off distance (`follow_distance = 0.5\,\text{m}`), which improves smoothness compared to direct frame-by-frame chasing.
+The core of the system is an **Extended Kalman Filter (EKF)** operating over an 8-dimensional state vector:
 
-Published outputs include:
+$$\mathbf{x} = [x,\ y,\ \theta,\ v_x,\ v_y,\ \omega,\ a_x,\ a_y]^T$$
 
-- `/target_goal_pose`
-- `/goal_generator_markers`
+The filter runs a prediction step at 50 Hz using a **constant acceleration motion model**:
 
-The RViz markers visualize the predicted motion, follow goal, and tracking geometry, making this module a key bridge between perception and closed-loop robot following.
+$$x_{t+1} = x_t + v_x \Delta t + \tfrac{1}{2} a_x \Delta t^2, \quad y_{t+1} = y_t + v_y \Delta t + \tfrac{1}{2} a_y \Delta t^2, \quad \theta_{t+1} = \theta_t + \omega \Delta t$$
 
-### 3.4 coordinator.py
+This prediction step propagates the state forward between measurements, maintaining continuous estimates even when the ArUco board is temporarily undetected. When new pose observations arrive from the detector, the EKF performs a measurement update via the standard Kalman gain formulation, weighting each correction by the relative uncertainty of the model and the sensor.
+
+Beyond the EKF, the simulation implements two additional filter variants for comparison and robustness evaluation: an **Unscented Kalman Filter (UKF)**, which propagates deterministically chosen sigma points through the nonlinear motion model to capture higher-order distribution moments without requiring explicit Jacobian computation, and a **Particle Filter (PF)**, which represents the full posterior distribution over target state using a weighted set of 500 particles and handles multi-modal or highly non-Gaussian scenarios through systematic resampling. The three filters run simultaneously on the same sensor stream, and their outputs are visualized side by side to identify which method best tracks the target in the current operating environment.
+
+For the final integration, the selected filter output — most likely the EKF for its efficiency or the UKF for its accuracy on smooth trajectories — will drive the follow-goal computation. The predicted future target position at a configurable horizon $$t_{\text{predict}}$$ will be computed directly from the filter state:
+
+$$\text{pred} = \mathbf{p}_{\text{current}} + \mathbf{v}_{\text{estimated}} \cdot t_{\text{predict}}$$
+
+A stand-off offset will then be applied along the depth axis to produce the final `/target_goal_pose`, ensuring the coordinator targets a point at a safe following distance rather than the board center itself.
+
+This replacement will substantially improve following smoothness, reduce reaction lag during target acceleration, and enable the coordinator to maintain a valid goal estimate during short occlusion events — directly addressing the primary limitation of the current passthrough approach.
+
+### 2.2.3 coordinator.py
 
 This module is the behavior and control layer of the mid-point system. It consumes board visibility and target-goal information and commands the TurtleBot 4 through a three-state recovery-aware controller:
 
@@ -195,17 +224,17 @@ This module is the main step that moves the project from “board pose estimatio
 
 ---
 
-## 4. Experimental Analysis & Validation
+## 3. Experimental Analysis & Validation
 
 At this milestone, our validation focus is to show that the core SmartFollower & Tracker pipeline is working end-to-end on hardware: perception, target-goal generation, robot following, target-loss recovery, and visualization. Full project goals such as obstacle avoidance in dynamic warehouse settings and 2D reconstruction are part of the broader final-system scope and are not yet fully claimed in this milestone.
 
-### 4.1 Sensor Calibration
+### 3.1 Sensor Calibration
 
 Camera intrinsic calibration was performed using a chessboard pattern (`camera_calib_oak.npz`). The calibration provides the camera matrix and distortion coefficients used by `solvePnP` for accurate 3D pose estimation.
 
 Board extrinsic calibration is defined in `board_config.json`, which specifies the physical `top_left_xy_m` position of each marker relative to the board center. The marker size is `0.0225m` and the board uses `DICT_6X6_250`.
 
-### 4.2 Coordinate Frame Convention
+### 3.2 Coordinate Frame Convention
 
 All pose values are expressed in **camera frame**:
 
@@ -217,17 +246,17 @@ All pose values are expressed in **camera frame**:
 
 For this milestone implementation, the camera frame is used as the primary operational reference for perception and short-horizon following. A static TF alignment is used for visualization and integration convenience, but this should not be interpreted as a full global localization solution.
 
-### 4.3 Run-Time Issues & Recovery
+### 3.3 Run-Time Issues & Recovery
 
 | Issue | Observed Behavior | Recovery Logic |
 |---|---|---|
-| Board temporarily occluded | `miss_count` increments each frame | FOLLOW → LOST after 5 misses |
+| Board temporarily occluded | Pose age exceeds 0.5 s timeout; robot stops immediately | FOLLOW → LOST after 5 s of `board_visible = False` |
 | Board lost for >5 seconds | Robot stops in LOST state | LOST → SEARCH after timeout |
-| Board not found during search | Robot rotates continuously | SEARCH resets timer after 30s |
+| Board not found during search | Robot stops and waits in SEARCH state | SEARCH resets timer after 30 s |
 | VMware USB passthrough instability | OAK-D disconnects on boot | Subscribe to ROS2 topic over WiFi instead |
 | QoS mismatch | RViz2 Image display shows "No Image" | Publisher set to `BEST_EFFORT`, RViz2 set to match |
 
-### 4.4 What We Added Beyond the Reference Repository
+### 3.4 What We Added Beyond the Reference Repository
 
 The reference TurtleBot 4 OAK-D ArUco-board repository provides the perception baseline: compressed image subscription, board detection, pose estimation, orientation output, visibility output, detected marker IDs, and TF.
 
@@ -242,37 +271,36 @@ Our milestone system extends beyond that baseline by adding:
 
 Therefore, this milestone should be presented as an **extension of prior board-pose work into a smart-following system**, not just as a reimplementation of the pose-estimation package.
 
----
-
-## 5. Individual Contribution
-
-| Team Member | Primary Technical Role | Key Contributions |
-|---|---|---|
-| Tatwik Meesala | Perception and integration | `aruco_detector.py`, board detection pipeline, SolvePnP integration, image transport handling, hardware testing |
-| Prajjwal | Prediction and mapping-oriented system development | `goal_generator.py`, future-position estimation, follow-goal generation, broader SLAM / reconstruction direction |
-| Lu Yan Tan | Coordination, control, and visualization | `coordinator.py`, FOLLOW / LOST / SEARCH state machine, TF / RViz integration, robot command behavior |
-
-
-## 6. Demonstration Videos
+### 3.5 Demonstration Videos
 
 Below are three short hardware demonstration videos showing the SmartFollower & Tracker system running on the TurtleBot 4 and simulation. The videos highlight the perception, prediction, and hardware implementation of the robot. 
 
-### 5.1 Aruco tracking + Robot state switching
-[YouTube Video 1](https://www.youtube.com/watch?v=VIDEO_ID_1)  
+1. Aruco tracking + Robot state switching
+[YouTube Video 1](https://www.youtube.com/watch?v=REegeuekApo)  
 *Real‑time board detection, board position and robot state visualization.*
 
-### 5.2 Hardware implemented Target follower
+2. Hardware implemented Target follower
 [YouTube Video 2](https://www.youtube.com/watch?v=1Pdddi-QHHU)  
 *Turtlebot following Arucho board in view.*
 
-### 5.3 Target tracking + prediction simulation
+3. Target tracking + prediction simulation
 [YouTube Video 3](https://www.youtube.com/watch?v=J7BFnYV3Crw)  
 *Simulation of robot tracking a target with EKF.*
 
 > Replace `VIDEO_ID_1`, `VIDEO_ID_2`, `VIDEO_ID_3` with your actual YouTube IDs.
 
+---
 
-## 7. Mid-Point Status Summary
+## 4. Individual Contribution
+
+| Team Member | Primary Technical Role | Key Git Commits/PRs | Key Contributions |
+|---|---|---|---|
+| Tatwik Meesala | Perception and integration | [7646c12](https://github.com/Mobile-Robots-UGV/turtlebot4-aruco-board-following-ros2) | board detection pipeline, SolvePnP integration, image transport handling, hardware testing |
+| Prajjwal | Prediction and mapping-oriented system development  | [38f644f](https://github.com/Mobile-Robots-UGV/aruco-simulation-gazebo-rviz) | future-position estimation, follow-goal generation, broader SLAM / reconstruction direction |
+| Lu Yan Tan | Coordination, control, and visualization | [a676342](https://github.com/Mobile-Robots-UGV/arucho-detection-goal-generator-coordinator) | FOLLOW / LOST / SEARCH state machine, TF / RViz integration, robot command behavior |
+
+
+## 5. Mid-Point Status Summary
 
 By Milestone 2, we have demonstrated a working hardware pipeline that:
 
