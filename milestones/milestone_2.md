@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Milestone 2
-parent: Project
+parent: Milestones
 nav_order: 1
 ---
 
