@@ -146,7 +146,7 @@ Module Declaration Table:
 | Static TF / frame setup | System | Completed | Provides frame consistency for visualization and integration | launch/config |
 | RViz2 visualization | System | Completed | Displays detections, goals, and controller state | RViz2 config |
 
-#### 2.2.1 aruco_detector.py
+### aruco_detector
 
 This module is the perception front end of the system. It subscribes to the TurtleBot 4 OAK-D compressed RGB topic and decodes each compressed frame using `cv2.imdecode` for OpenCV ArUco processing. Using the configured 4-marker board geometry and camera calibration, it estimates the board pose with `solvePnP`. The core detection and pose computation methods are based on `board_pose_ros` implementation, which was tested and validated on real TurtleBot 4 hardware.
 
@@ -173,7 +173,7 @@ Published outputs:
 
 All values are expressed using camera-frame convention: `+X = right`, `+Y = down`, `+Z = forward`.
 
-#### 2.2.2 goal_generator.py
+### goal_generator
 
 This module currently serves as a **placeholder passthrough** in the mid-point system. In its present form, it forwards the `/detected_aruco_pose` topic directly to `/target_goal_pose` with minimal processing, allowing the coordinator to function end-to-end on hardware while the full prediction backend is being integrated. This placeholder will be replaced by Prajjwal's state estimation and prediction stack for the final system.
 
@@ -203,7 +203,7 @@ A stand-off offset will then be applied along the depth axis to produce the fina
 
 This replacement will substantially improve following smoothness, reduce reaction lag during target acceleration, and enable the coordinator to maintain a valid goal estimate during short occlusion events — directly addressing the primary limitation of the current passthrough approach.
 
-### 2.2.3 coordinator.py
+### coordinator
 
 This module is the behavior and control layer of the mid-point system. It consumes board visibility and target-goal information and commands the TurtleBot 4 through a three-state recovery-aware controller:
 
