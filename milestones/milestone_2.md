@@ -287,8 +287,6 @@ Below are three short hardware demonstration videos showing the SmartFollower & 
 [YouTube Video 3](https://www.youtube.com/watch?v=J7BFnYV3Crw)  
 *Simulation of robot tracking a target with EKF.*
 
-> Replace `VIDEO_ID_1`, `VIDEO_ID_2`, `VIDEO_ID_3` with your actual YouTube IDs.
-
 ---
 
 ## 4. Individual Contribution
