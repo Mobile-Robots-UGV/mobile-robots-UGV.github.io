@@ -289,7 +289,16 @@ Below are three short hardware demonstration videos showing the SmartFollower & 
 
 ---
 
-## 4. Individual Contribution
+## 4. Project Management
+
+### 4.1 Instructor Feedback Integration
+
+| Instructor Critique / Question | Technical Action Taken |
+|---|---|
+| Is your test environment going to be the lab space? If so, how are you going to recreate the dynamic factory/warehouse setting? You could also use a simulation environment. | Our hardware validation uses the lab space, where a person carries the ArUco board at varying speeds, changes directions, and temporarily occludes it to exercise the FOLLOW, LOST, and SEARCH recovery states. For controlled dynamic scenarios, the simulation space provides a structured environment where a leader robot navigates autonomously while the follower tracks it, allowing repeatable testing of occlusion, target acceleration, and obstacle interaction without depending on lab availability. |
+
+
+### 4.2 Individual Contribution
 
 | Team Member | Primary Technical Role | Key Git Commits/PRs | Key Contributions |
 |---|---|---|---|
