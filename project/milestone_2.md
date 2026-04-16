@@ -96,6 +96,10 @@ graph LR
     COO --> CMD
 ```
 
+RQT graph:
+![alt text](image.png)
+
+
 ### 2.2 Topics
 
 | Topic | Message Type | Publisher | Subscriber / Consumer |
@@ -248,7 +252,27 @@ Therefore, this milestone should be presented as an **extension of prior board-p
 | Prajjwal | Prediction and mapping-oriented system development | `goal_generator.py`, future-position estimation, follow-goal generation, broader SLAM / reconstruction direction |
 | Lu Yan Tan | Coordination, control, and visualization | `coordinator.py`, FOLLOW / LOST / SEARCH state machine, TF / RViz integration, robot command behavior |
 
-## 6. Mid-Point Status Summary
+
+## 6. Demonstration Videos
+
+Below are three short hardware demonstration videos showing the SmartFollower & Tracker system running on the TurtleBot 4 and simulation. The videos highlight the perception, prediction, and hardware implementation of the robot. 
+
+### 5.1 Aruco tracking + Robot state switching
+[YouTube Video 1](https://www.youtube.com/watch?v=VIDEO_ID_1)  
+*Real‑time board detection, board position and robot state visualization.*
+
+### 5.2 Hardware implemented Target follower
+[YouTube Video 2](https://www.youtube.com/watch?v=1Pdddi-QHHU)  
+*Turtlebot following Arucho board in view.*
+
+### 5.3 Target tracking + prediction simulation
+[YouTube Video 3](https://www.youtube.com/watch?v=J7BFnYV3Crw)  
+*Simulation of robot tracking a target with EKF.*
+
+> Replace `VIDEO_ID_1`, `VIDEO_ID_2`, `VIDEO_ID_3` with your actual YouTube IDs.
+
+
+## 7. Mid-Point Status Summary
 
 By Milestone 2, we have demonstrated a working hardware pipeline that:
 
