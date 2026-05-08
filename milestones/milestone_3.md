@@ -13,16 +13,6 @@ nav_order: 2
 
 The **SmartFollower & Tracker (SFT)** system enables a TurtleBot 4 to autonomously follow a human operator carrying a printed ArUco marker board. The robot perceives the target through its OAK-D camera, estimates the board's 6-DoF pose using `solvePnP`, and commands velocity through a proportional-derivative controller with LiDAR-based safety. If the robot lose the tracking, the system filters and predicts the target state using a selectable Kalman Filter or Particle Filter backend. The system operates across three states — `measured`, `predicted`, and `lost` — enabling persistent tracking even it has lost its visibility.
 
-
-### Hardware Following Demo
-[![Hardware Following Demo]](https://youtu.be/bWFFL76V-qk)
-*TurtleBot 4 following ArUco board in lab environment with SLAM mapping with prediction when lost track of the board.*
-
-### Simulation Demo
-[![Simulation Pipeline]](https://youtu.be/A36tL840Uys?si=ghFS8TSIxIrdmjJY)
-*Project running in simulation*
-
-
 ```mermaid
 graph TD
     CAM["OAK-D Camera\ncompressed image over WiFi"]
@@ -45,11 +35,19 @@ graph TD
     BTN -->|"/robot_09/predicted_board_path"| RVIZ
 ```
 
+### Hardware Following Demo
+[![Hardware Following Demo]](https://youtu.be/A36tL840Uys?si=ghFS8TSIxIrdmjJY)
+*TurtleBot 4 following ArUco board in lab environment with SLAM mapping with prediction when lost track of the board.*
+
+### Simulation Demo
+[![Simulation Pipeline]](https://youtu.be/bWFFL76V-qk)
+*Project running in simulation*
+
 Key results: the system maintained stable following at 0.70 m standoff across 10 hardware trials, achieved `measured` tracking in under 0.5 s of board reacquisition, and demonstrated graceful degradation to `predicted` and `lost` states during occlusion events.
 
 ---
 
-## 1. Algorithm
+## 2. Algorithm
 
 The system works in three stages: **see the board**, **track where it is**, **drive toward it**.
 

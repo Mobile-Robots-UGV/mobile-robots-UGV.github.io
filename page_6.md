@@ -45,18 +45,18 @@ Status legend: ✅ Completed | 🔄 In Progress | 🕒 Planned
 |  | Controls & Autonomy | goal_generator placeholder integrated; pipeline end-to-end | ✅ |
 |  | Interface & Data | Filter comparison visualization; Milestone 2 report published | ✅ |
 |  | Milestone | Milestone 2 submitted; full pipeline operational on hardware | ✅ |
-| **Week 14** | Hardware Integration | Minor stabilization and parameter tuning | 🔄 |
-|  | Sensors | Replace goal_generator placeholder with EKF/UKF prediction | 🔄 |
-|  | Controls & Autonomy | Scenario tests: occlusions, target acceleration, recovery | 🔄 |
-|  | Interface & Data | Log follow performance; capture demo videos | 🔄 |
-|  | Milestone | Prediction-based following working end-to-end | 🔄 |
-| **Week 15** | Hardware Integration | Freeze hardware configuration | 🕒 |
-|  | Sensors | Regression tests with full prediction pipeline | 🕒 |
-|  | Controls & Autonomy | Freeze parameters; document final configs | 🕒 |
-|  | Interface & Data | Polish visualizations and website for final demo | 🕒 |
-|  | Milestone | System ready for final demo | 🕒 |
-| **Week 16** | Hardware Integration | Demo prep: charging, spares, setup | 🕒 |
-|  | Sensors | Quick health checks | 🕒 |
-|  | Controls & Autonomy | Run final scripted demo | 🕒 |
-|  | Interface & Data | Capture final logs, screenshots, videos | 🕒 |
-|  | Milestone | Final demo completed | 🕒 |
+| **Week 14** | Hardware Integration | Minor stabilization and parameter tuning | ✅ |
+|  | Sensors | KF/PF tracker integrated; measured/predicted/lost states validated | ✅ |
+|  | Controls & Autonomy | PD angular controller + deadband added; oscillation eliminated | ✅ |
+|  | Interface & Data | Debug image pipeline; low-latency RViz2 camera feed | ✅ |
+|  | Milestone | Prediction-based following working end-to-end on hardware | ✅ |
+| **Week 15** | Hardware Integration | Hardware configuration frozen; COLCON_IGNORE structure set up | ✅ |
+|  | Sensors | SLAM integration validated with `namespace:=/robot_09` | ✅ |
+|  | Controls & Autonomy | Parameters frozen; OpenCV version compatibility fix applied | ✅ |
+|  | Interface & Data | Master launch file; RViz2 config saved; website updated | ✅ |
+|  | Milestone | System ready for final demo | ✅ |
+| **Week 16** | Hardware Integration | Demo prep: charging, spares, setup | ✅ |
+|  | Sensors | Health checks; board detection verified | ✅ |
+|  | Controls & Autonomy | Final scripted demo executed | ✅ |
+|  | Interface & Data | Milestone 3 report published; demo videos captured | ✅ |
+|  | Milestone | Final demo completed | ✅ |
