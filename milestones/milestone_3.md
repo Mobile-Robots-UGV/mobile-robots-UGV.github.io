@@ -13,6 +13,7 @@ nav_order: 2
 
 The **SmartFollower & Tracker (SFT)** system enables a TurtleBot 4 to autonomously follow a human operator carrying a printed ArUco marker board. The robot perceives the target through its OAK-D camera, estimates the board's 6-DoF pose using `solvePnP`, and commands velocity through a proportional-derivative controller with LiDAR-based safety. If the robot lose the tracking, the system filters and predicts the target state using a selectable Kalman Filter or Particle Filter backend. The system operates across three states — `measured`, `predicted`, and `lost` — enabling persistent tracking even it has lost its visibility.
 
+### System Pipeline
 ```mermaid
 graph TD
     CAM["OAK-D Camera\ncompressed image over WiFi"]
@@ -33,6 +34,44 @@ graph TD
     SLAM -->|"/map + /tf"| RVIZ
     BPN -->|"/robot_09/board_debug_image\n/robot_09/board_markers"| RVIZ
     BTN -->|"/robot_09/predicted_board_path"| RVIZ
+```
+
+### RQT Graph (actual running system)
+```mermaid
+graph LR
+    subgraph Robot["/robot_09 — TurtleBot 4"]
+        CAM["/robot_09/oakd\nOAK-D Camera"]
+        LIDAR["/robot_09/rplidar\nLiDAR"]
+        BASE["/robot_09/create3_repub\nRobot Base"]
+    end
+
+    subgraph Perception["Perception (VM)"]
+        BPN["/board_pose_node"]
+    end
+
+    subgraph Tracking["Tracking (VM)"]
+        BTN["/board_tracker_node\nKF / PF"]
+    end
+
+    subgraph Control["Control (VM)"]
+        RFN["/recovery_follower_node"]
+    end
+
+    subgraph SLAM_Node["SLAM (VM)"]
+        SLAM["/slam_toolbox"]
+    end
+
+    CAM -->|"/robot_09/oakd/rgb/image_raw/compressed"| BPN
+    BPN -->|"/robot_09/board_pose"| BTN
+    BPN -->|"/robot_09/board_visible"| BTN
+    BTN -->|"/robot_09/tracked_board_pose"| RFN
+    BTN -->|"/robot_09/tracker_status"| RFN
+    BTN -->|"/robot_09/predicted_board_path"| SLAM
+    LIDAR -->|"/robot_09/scan"| RFN
+    LIDAR -->|"/robot_09/scan"| SLAM
+    RFN -->|"/robot_09/cmd_vel"| BASE
+    SLAM -->|"/map"| SLAM
+    SLAM -->|"/robot_09/tf"| BTN
 ```
 
 ### Hardware Following Demo
