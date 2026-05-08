@@ -225,7 +225,7 @@ All trials were conducted in the lab environment with the same hardware configur
 
 The state timeline shows both backends spent most of the trial in `measured` state, confirming stable board detection under normal conditions. Key observations:
 
-**Conclusion:** PF is able to get into the measured state, reflecting that it react faster to see the ArUco marker.
+**Conclusion:** PF is able to get into the measured state more frequently, reflecting that it can react faster to see the ArUco marker.
 
 ---
 
