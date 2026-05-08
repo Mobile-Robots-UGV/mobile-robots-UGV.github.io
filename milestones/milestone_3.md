@@ -198,6 +198,17 @@ The system runs in three states:
 
 This means a brief occlusion — someone walking in front of the board — does not immediately stop the robot. It continues cautiously for up to 3 seconds using the filter's prediction before giving up.
 
+### Demo
+![alt text](simulation_demo.gif)
+### Simulation Demo
+[![Simulation Pipeline]](https://youtu.be/bWFFL76V-qk)
+*Project running in simulation*
+
+![alt text](<hardware demo.gif>)
+### Hardware Following Demo
+[![Hardware Following Demo]](https://youtu.be/A36tL840Uys?si=ghFS8TSIxIrdmjJY)
+*TurtleBot 4 following ArUco board in lab environment with SLAM mapping with prediction when lost track of the board.*
+
 ---
 
 ## 3. Benchmarking & Results
@@ -210,14 +221,11 @@ All trials were conducted in the lab environment with the same hardware configur
 
 ### 3.2 Tracker State Timeline — KF vs PF
 
-![Tracker Status Timeline](tracked_pose_timeseries-1.png)
+![Tracker Status Timeline](status_timeline.png)
 
 The state timeline shows both backends spent most of the trial in `measured` state, confirming stable board detection under normal conditions. Key observations:
 
-- **KF** transitioned to `predicted` at ~1s after startup and recovered to `measured` quickly. It never entered `lost` during the main trial window.
-- **PF** entered `lost` briefly at ~25s, recovering within 1–2 seconds. This coincides with a period of rapid board movement visible in the pose plot.
-- Both backends showed frequent rapid `measured`↔`predicted` flipping between t=0–20s, indicating intermittent board visibility rather than full loss.
-- After t=35s, PF remained in `predicted` for an extended period while KF maintained `measured` — suggesting KF is more robust to the lighting and angle conditions at that point in the trial.
+**Conclusion:** PF is able to get into the measured state, reflecting that it react faster to see the ArUco marker.
 
 ---
 
@@ -262,33 +270,12 @@ This plot shows the Euclidean error between each backend's state estimate and th
 
 The velocity commands reflect the quality of each tracker's pose estimate.
 
-**Linear velocity (top):**
-- KF (blue) produces smooth, stable forward commands in the 0.03–0.15 m/s range
-- PF (orange) produces erratic commands with frequent large oscillations, consistent with its unstable pose estimate after divergence
-
-**Angular velocity (bottom):**
-- KF (blue) produces smooth, gradually varying steering commands
-- PF (orange) saturates at ±0.45 rad/s repeatedly from t=5s onward — the robot would have been spinning continuously if PF were driving it
-
-**Conclusion:** KF produces far safer and smoother velocity commands. The PF's divergence after t=12s would have caused the robot to drive erratically in a real deployment.
 
 ---
 
 ### 3.6 Summary: KF vs PF Comparison
 
 The Kalman Filter is clearly the better choice for this application. Its constant-velocity assumption holds well for a human walking at moderate speed, and its single-estimate update law is numerically stable. The Particle Filter requires more careful tuning of particle count, noise parameters, and resampling thresholds before it can match KF performance on hardware.
-
-
-### Demo
-![alt text](simulation_demo.gif)
-### Simulation Demo
-[![Simulation Pipeline]](https://youtu.be/bWFFL76V-qk)
-*Project running in simulation*
-
-![alt text](<hardware demo.gif>)
-### Hardware Following Demo
-[![Hardware Following Demo]](https://youtu.be/A36tL840Uys?si=ghFS8TSIxIrdmjJY)
-*TurtleBot 4 following ArUco board in lab environment with SLAM mapping with prediction when lost track of the board.*
 
 ---
 
