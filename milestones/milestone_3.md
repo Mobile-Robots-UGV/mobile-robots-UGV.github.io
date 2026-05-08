@@ -9,18 +9,40 @@ nav_order: 2
 
 ---
 
-## Graphical Abstract
+## 1. Graphical Abstract
 
-The **SmartFollower & Tracker (SFT)** system enables a TurtleBot 4 to autonomously follow a human operator carrying a printed ArUco marker board. The robot perceives the target through its OAK-D camera, estimates the board's 6-DoF pose using `solvePnP`, filters and predicts the target state using a selectable Kalman Filter or Particle Filter backend, and commands velocity through a proportional-derivative controller with LiDAR-based safety. The system operates across three states — `measured`, `predicted`, and `lost` — allowing it to continue cautious pursuit even during brief occlusions.
+The **SmartFollower & Tracker (SFT)** system enables a TurtleBot 4 to autonomously follow a human operator carrying a printed ArUco marker board. The robot perceives the target through its OAK-D camera, estimates the board's 6-DoF pose using `solvePnP`, and commands velocity through a proportional-derivative controller with LiDAR-based safety. If the robot lose the tracking, the system filters and predicts the target state using a selectable Kalman Filter or Particle Filter backend. The system operates across three states — `measured`, `predicted`, and `lost` — enabling persistent tracking even it has lost its visibility.
 
-```
-OAK-D Camera
-    ↓ compressed image (WiFi)
-board_pose_node  →  board_tracker_node (KF/PF)  →  recovery_follower_node
-                                                          ↓
-                                              /robot_09/cmd_vel → TurtleBot 4
-                                                    ↑
-                                          /robot_09/scan (LiDAR safety)
+
+### Hardware Following Demo
+[![Hardware Following Demo]](https://youtu.be/bWFFL76V-qk)
+*TurtleBot 4 following ArUco board in lab environment with SLAM mapping with prediction when lost track of the board.*
+
+### Simulation Demo
+[![Simulation Pipeline]](https://youtu.be/A36tL840Uys?si=ghFS8TSIxIrdmjJY)
+*Project running in simulation*
+
+
+```mermaid
+graph TD
+    CAM["OAK-D Camera\ncompressed image over WiFi"]
+    BPN["board_pose_node\nsolvePnP 6-DoF pose estimation\nArUco detection + debug image"]
+    BTN["board_tracker_node\nKF / PF state estimation\nmeasured → predicted → lost"]
+    RFN["recovery_follower_node\nPD control + deadband\nLiDAR safety guard"]
+    TB4["/robot_09/cmd_vel\nTurtleBot 4 Base"]
+    LIDAR["/robot_09/scan\nRPLidar"]
+    SLAM["slam_toolbox\nSLAM mapping\nnamespace:=/robot_09"]
+    RVIZ["RViz2\nmap + scan + board markers\n+ debug image"]
+
+    CAM -->|"compressed"| BPN
+    BPN -->|"/robot_09/board_pose\n/robot_09/board_visible"| BTN
+    BTN -->|"/robot_09/tracked_board_pose\n/robot_09/tracker_status"| RFN
+    RFN -->|"TwistStamped"| TB4
+    LIDAR -->|"LaserScan"| RFN
+    LIDAR -->|"LaserScan"| SLAM
+    SLAM -->|"/map + /tf"| RVIZ
+    BPN -->|"/robot_09/board_debug_image\n/robot_09/board_markers"| RVIZ
+    BTN -->|"/robot_09/predicted_board_path"| RVIZ
 ```
 
 Key results: the system maintained stable following at 0.70 m standoff across 10 hardware trials, achieved `measured` tracking in under 0.5 s of board reacquisition, and demonstrated graceful degradation to `predicted` and `lost` states during occlusion events.
@@ -29,123 +51,160 @@ Key results: the system maintained stable following at 0.70 m standoff across 10
 
 ## 1. Algorithm
 
-### 1.1 Pose Estimation
-
-The board center pose is estimated from a known 4-marker ArUco layout using OpenCV's `solvePnP`:
-
-$$[\mathbf{R} \mid \mathbf{t}] = \arg\min \sum_{i} \left\| \mathbf{p}_i - \pi\left(\mathbf{R} \mathbf{P}_i + \mathbf{t}\right) \right\|^2$$
-
-where $$\mathbf{P}_i \in \mathbb{R}^3$$ are known board-frame object points, $$\mathbf{p}_i \in \mathbb{R}^2$$ are detected image-plane corners, and $$\pi(\cdot)$$ is the camera projection function. The translation vector $$\mathbf{t} = [x, y, z]^T$$ gives the board position in camera frame, where $$z$$ is forward distance and $$x$$ is lateral offset.
-
-### 1.2 Kalman Filter Tracking
-
-The tracker maintains a 4-dimensional state vector in camera frame:
-
-$$\mathbf{x}_k = \begin{bmatrix} x \\ z \\ v_x \\ v_z \end{bmatrix}$$
-
-**Prediction step** (constant velocity model):
-
-$$\mathbf{x}_{k|k-1} = \mathbf{F} \mathbf{x}_{k-1}, \quad \mathbf{P}_{k|k-1} = \mathbf{F} \mathbf{P}_{k-1} \mathbf{F}^T + \mathbf{Q}$$
-
-where the state transition matrix is:
-
-$$\mathbf{F} = \begin{bmatrix} 1 & 0 & \Delta t & 0 \\ 0 & 1 & 0 & \Delta t \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}$$
-
-**Update step** (when board is visible):
-
-$$\mathbf{K}_k = \mathbf{P}_{k|k-1} \mathbf{H}^T \left( \mathbf{H} \mathbf{P}_{k|k-1} \mathbf{H}^T + \mathbf{R} \right)^{-1}$$
-
-$$\mathbf{x}_k = \mathbf{x}_{k|k-1} + \mathbf{K}_k \left( \mathbf{z}_k - \mathbf{H} \mathbf{x}_{k|k-1} \right)$$
-
-$$\mathbf{P}_k = \left( \mathbf{I} - \mathbf{K}_k \mathbf{H} \right) \mathbf{P}_{k|k-1}$$
-
-**Prediction during occlusion** — when the board disappears, the filter predicts the current position without an update:
-
-$$\hat{x}(t) = x_{k} + v_{x,k} \cdot \Delta t, \quad \hat{z}(t) = z_{k} + v_{z,k} \cdot \Delta t$$
-
-### 1.3 Control Law
-
-The follower applies a proportional controller with deadband:
-
-$$x_{err} = \begin{cases} 0 & |x| < \delta_x \\ x & \text{otherwise} \end{cases}, \quad z_{err} = \begin{cases} 0 & |z - d_{target}| < \delta_z \\ z - d_{target} & \text{otherwise} \end{cases}$$
-
-$$v = \text{clip}\left( K_{lin} \cdot z_{err},\ -v_{max},\ +v_{max} \right)$$
-
-$$\omega = \text{clip}\left( -K_{ang} \cdot x_{err},\ -\omega_{max},\ +\omega_{max} \right)$$
-
-with parameters: $$d_{target} = 0.70\ \text{m}$$, $$K_{lin} = 0.35$$, $$K_{ang} = 0.45$$, $$\delta_x = 0.08\ \text{m}$$, $$\delta_z = 0.05\ \text{m}$$, $$v_{max} = 0.15\ \text{m/s}$$, $$\omega_{max} = 0.25\ \text{rad/s}$$.
-
-### 1.4 Tracker State Machine
-
-$$\text{status} = \begin{cases} \texttt{measured} & \text{if board visible and age} < T_{fresh} \\ \texttt{predicted} & \text{if age} < T_{predict} \\ \texttt{lost} & \text{otherwise} \end{cases}$$
-
-where $$T_{fresh} = 0.5\ \text{s}$$ and $$T_{predict} = 3.0\ \text{s}$$.
+The system works in three stages: **see the board**, **track where it is**, **drive toward it**.
 
 ---
 
-## 2. Benchmarking & Results
+### 2.1 Pose Estimation — Seeing the Board
 
-### 2.1 Trial Setup
+The robot needs to know where the ArUco board is in 3D space. We use OpenCV's `solvePnP`, which works by matching the known physical positions of the four markers on the board to their detected pixel positions in the camera image — similar to how you can estimate how far away a door is if you know its real height and how tall it looks in a photo.
+
+The output we care about is:
+
+$$\mathbf{t} = [x,\ y,\ z]^T$$
+
+where $$z$$ is how far ahead the board is, and $$x$$ is how far left or right it is. These two values directly drive the robot.
+
+---
+
+### 2.2a Kalman Filter — Tracking the Board
+
+Raw `solvePnP` output is noisy — the board position jumps around frame to frame. The Kalman Filter smooths this out by maintaining an internal estimate of where the board is and how fast it is moving:
+
+$$\mathbf{x}_k = [x,\ z,\ v_x,\ v_z]^T$$
+
+It works in two steps:
+
+**Predict** — before seeing a new frame, guess where the board moved using velocity:
+$$\hat{x} = x + v_x \cdot \Delta t, \quad \hat{z} = z + v_z \cdot \Delta t$$
+
+**Update** — when a new detection arrives, blend the prediction with the measurement based on how much we trust each:
+$$\mathbf{x}_k = \mathbf{x}_{k|k-1} + \mathbf{K}_k \left( \mathbf{z}_k - \mathbf{H}\, \mathbf{x}_{k|k-1} \right)$$
+
+The Kalman gain $$\mathbf{K}_k$$ decides the blend — high sensor noise means trust the prediction more, low noise means trust the measurement more.
+
+When the board disappears, the filter keeps predicting using the last known velocity. This gives the robot a few seconds of graceful recovery before giving up.
+
+---
+
+### 2.2b Particle Filter — An Alternative Tracker
+
+The Kalman Filter assumes the board moves smoothly and predictably. When the target moves erratically — sudden direction changes, fast acceleration — the Particle Filter handles it better.
+
+Instead of one estimate, it maintains **300 particles**, each representing a possible board state:
+
+$$\text{particle}_i = [x_i,\ z_i,\ v_{x,i},\ v_{z,i}], \quad i = 1 \ldots 300$$
+
+Think of each particle as a "guess" about where the board might be. The filter works in three steps:
+
+**Scatter** — move all particles forward using the motion model plus random noise:
+$$x_i \leftarrow x_i + v_{x,i} \cdot \Delta t + \epsilon, \quad \epsilon \sim \mathcal{N}(0, \sigma)$$
+
+**Weight** — when a new detection arrives, give higher weight to particles that are close to the measurement:
+$$w_i \propto \exp\!\left( -\frac{(x_i - x_{meas})^2 + (z_i - z_{meas})^2}{2\sigma^2} \right)$$
+
+**Resample** — particles far from the measurement die, particles close to it multiply.
+
+The final estimate is the weighted average of all particles:
+$$\hat{x} = \sum_i w_i \cdot x_i, \quad \hat{z} = \sum_i w_i \cdot z_i$$
+
+**KF vs PF in plain terms:**
+
+| | Kalman Filter | Particle Filter |
+|---|---|---|
+| Works best for | Smooth predictable motion | Erratic sudden motion |
+| Computation | Fast — one estimate | Slower — 300 particles |
+| Switch in yaml | `tracker_backend: kf` | `tracker_backend: pf` |
+
+---
+
+### 2.3 Control Law — Driving Toward the Board
+
+Once we know where the board is, we compute how fast to drive and turn using a simple proportional controller:
+
+$$v = \text{clip}\!\left( K_{lin} \cdot (z - d_{target}),\ -v_{max},\ +v_{max} \right)$$
+
+$$\omega = \text{clip}\!\left( -K_{ang} \cdot x,\ -\omega_{max},\ +\omega_{max} \right)$$
+
+- If the board is **too far** → drive forward
+- If the board is **too close** → drive backward
+- If the board is **to the right** → turn right
+
+Small errors within a deadband are ignored to prevent the robot from constantly micro-correcting:
+
+$$x_{err} = \begin{cases} 0 & |x| < 0.08\ \text{m} \\ x & \text{otherwise} \end{cases}, \quad z_{err} = \begin{cases} 0 & |z - 0.70| < 0.05\ \text{m} \\ z - 0.70 & \text{otherwise} \end{cases}$$
+
+---
+
+### 2.4 State Machine — Handling Target Loss
+
+The system runs in three states:
+
+| State | Condition | Robot Behavior |
+|---|---|---|
+| `measured` | Board visible and fresh | Full speed following |
+| `predicted` | Board lost < 3 seconds | Slow cautious following using KF or PF prediction |
+| `lost` | Board lost > 3 seconds | Full stop |
+
+This means a brief occlusion — someone walking in front of the board — does not immediately stop the robot. It continues cautiously for up to 3 seconds using the filter's prediction before giving up.
+
+---
+
+## 3. Benchmarking & Results
+
+### 3.1 Trial Setup
 
 All trials were conducted in the lab environment. The operator walked a predefined path carrying the ArUco board at approximately 0.3–0.5 m/s. Ten independent trials were recorded. Each trial lasted approximately 60 seconds and included at least one deliberate 3-second board occlusion event.
 
-### 2.2 Tracking State Distribution
+### 3.2 Tracking State Distribution
 
-Across 10 trials, the tracker status was logged at 20 Hz. The average time distribution per trial:
+Across 10 trials, the tracker status was logged at 20 Hz. Results will be updated after final hardware trials.
 
 | Status | Average Duration | Percentage |
 |---|---|---|
-| `measured` | 51.2 s | 85.3% |
-| `predicted` | 6.4 s | 10.7% |
-| `lost` | 2.4 s | 4.0% |
+| `measured` | — | — |
+| `predicted` | — | — |
+| `lost` | — | — |
 
-The system recovered from `predicted` to `measured` in under 0.5 s on all trials where the board was reacquired within the prediction window.
+### 3.3 Following Distance Error
 
-### 2.3 Following Distance Error
-
-The desired standoff distance was 0.70 m. Distance error was computed as $$e_z = z_{measured} - d_{target}$$:
+The desired standoff distance was 0.70 m. Distance error was computed as $$e_z = z_{measured} - d_{target}$$. Results will be updated after final hardware trials.
 
 | Metric | Value |
 |---|---|
-| Mean distance error | +0.04 m |
-| Standard deviation | 0.06 m |
-| Max overshoot | 0.18 m |
-| Max undershoot | -0.12 m |
-| Within ±0.10 m | 78% of time |
+| Mean distance error | — |
+| Standard deviation | — |
+| Max overshoot | — |
+| Max undershoot | — |
+| Within ±0.10 m | — |
 
-The positive mean bias indicates the robot trended slightly farther than the target, which is consistent with conservative LiDAR safety guard activation near obstacles.
+### 3.4 Angular Tracking Error
 
-### 2.4 Angular Tracking Error
-
-Lateral offset error $$e_x = x_{measured}$$ was measured while the board was centered in frame (desired $$x = 0$$):
+Lateral offset error $$e_x = x_{measured}$$ was measured while the board was centered in frame (desired $$x = 0$$). Results will be updated after final hardware trials.
 
 | Metric | Value |
 |---|---|
-| Mean lateral error | 0.01 m |
-| Standard deviation | 0.04 m |
-| Within deadband (±0.08 m) | 82% of time |
+| Mean lateral error | — |
+| Standard deviation | — |
+| Within deadband (±0.08 m) | — |
 
-The deadband was effective at suppressing jitter — without it, the robot exhibited continuous micro-corrections. With the PD controller, oscillation was eliminated in 9 out of 10 trials.
+### 3.5 Success Rate
 
-### 2.5 Success Rate
-
-A trial was considered successful if the robot maintained following contact (status ≠ `lost` for more than 5 consecutive seconds) throughout the 60-second path.
+A trial was considered successful if the robot maintained following contact (status ≠ `lost` for more than 5 consecutive seconds) throughout the 60-second path. Results will be updated after final hardware trials.
 
 | Outcome | Count |
 |---|---|
-| Successful trials | 8 / 10 |
-| Failed — board lost permanently | 1 / 10 |
-| Failed — LiDAR false stop | 1 / 10 |
+| Successful trials | — / 10 |
+| Failed — board lost permanently | — / 10 |
+| Failed — LiDAR false stop | — / 10 |
 
-The one permanent loss occurred when the operator walked behind an obstacle that fully blocked the camera view for longer than `prediction_timeout_s = 3.0 s`. The LiDAR false stop occurred when a chair leg entered the 25-degree front scan cone at 0.43 m, triggering the safety guard and halting forward motion while the board continued moving away.
+### 3.6 SLAM Mapping
 
-### 2.6 SLAM Mapping
-
-During 3 hardware trials where SLAM was running simultaneously with following, the system successfully built a partial map of the lab environment. The `namespace:=/robot_09` argument correctly routed all SLAM topic subscriptions without any topic remapping or bridge nodes.
+During hardware trials where SLAM was running simultaneously with following, the system built a partial map of the lab environment. The `namespace:=/robot_09` argument correctly routed all SLAM topic subscriptions without any topic remapping or bridge nodes. Quantitative map quality results will be updated after final trials.
 
 ---
 
-## 3. Ethical Impact Statement
+## 4. Ethical Impact Statement
 
 ### Privacy
 
@@ -161,29 +220,29 @@ The LiDAR-based safety guard has a known limitation: the RPLidar sensor cannot d
 
 ---
 
-## 4. Custom Module Code Links
+## 5. Custom Module Code Links
 
-| Module | File | Primary Author |
-|---|---|---|
-| `board_pose_node.py` | [board_pose_node.py](https://github.com/Mobile-Robots-UGV/turtlebot4-sft-aruco-kf-pf-recovery/blob/main/board_pose_ros/board_pose_ros/board_pose_node.py) | Tatwik Meesala |
-| `board_tracker_node.py` | [board_tracker_node.py](https://github.com/Mobile-Robots-UGV/turtlebot4-sft-aruco-kf-pf-recovery/blob/main/sft_hardware_tracker/sft_hardware_tracker/board_tracker_node.py) | Tatwik Meesala |
-| `recovery_follower_node.py` | [recovery_follower_node.py](https://github.com/Mobile-Robots-UGV/turtlebot4-sft-aruco-kf-pf-recovery/blob/main/sft_hardware_tracker/sft_hardware_tracker/recovery_follower_node.py) | Lu Yan Tan |
-| `leader_odom_tf_node.py` | [leader_odom_tf_node.py](https://github.com/Mobile-Robots-UGV/sim-to-real-integration/blob/main/sft_hardware_tracker/sft_hardware_tracker/leader_odom_tf_node.py) | Tatwik Meesala |
-| `sft_hardware_recovery.launch.py` | [sft_hardware_recovery.launch.py](https://github.com/Mobile-Robots-UGV/turtlebot4-sft-aruco-kf-pf-recovery/blob/main/sft_hardware_tracker/launch/sft_hardware_recovery.launch.py) | Lu Yan Tan |
+| Module | File |
+|---|---|
+| `board_pose_node.py` | [board_pose_node.py](https://github.com/Mobile-Robots-UGV/turtlebot4-smart-follower-tracker-hardware/blob/main/board_pose_ros/board_pose_ros/board_pose_node.py) |
+| `board_tracker_node.py` | [board_tracker_node.py](https://github.com/Mobile-Robots-UGV/turtlebot4-smart-follower-tracker-hardware/blob/main/sft_hardware_tracker/sft_hardware_tracker/board_tracker_node.py) |
+| `recovery_follower_node.py` | [recovery_follower_node.py](https://github.com/Mobile-Robots-UGV/turtlebot4-smart-follower-tracker-hardware/blob/main/sft_hardware_tracker/sft_hardware_tracker/recovery_follower_node.py) |
+| `leader_odom_tf_node.py` | [leader_odom_tf_node.py](https://github.com/Mobile-Robots-UGV/turtlebot4-smart-follower-tracker-hardware/blob/main/sft_hardware_tracker/sft_hardware_tracker/leader_odom_tf_node.py) |
+| `sft_hardware_recovery.launch.py` | [sft_hardware_recovery.launch.py](https://github.com/Mobile-Robots-UGV/turtlebot4-smart-follower-tracker-hardware/blob/main/sft_hardware_tracker/launch/sft_hardware_recovery.launch.py) |
 
 ---
 
-## 5. Individual Contribution & Audit Appendix
+## 6. Individual Contribution & Audit Appendix
 
 | Team Member | Primary Technical Role | Key Git Commits/PRs | Specific File(s) Authorship |
 |---|---|---|---|
-| Tatwik Meesala | Perception, detection pipeline, simulation integration | [7646c12](https://github.com/Mobile-Robots-UGV/turtlebot4-aruco-board-following-ros2/commit/7646c12) | `recovery_follower_node.py`, `sft_hardware_recovery.launch.py`, `leader_odom_tf_node.py` |
-| Prajjwal | State estimation, simulation, prediction filters | [38f644f](https://github.com/Mobile-Robots-UGV/aruco-simulation-gazebo-rviz/commit/38f644f) | `sensor_fusion_ekf.py`, `sensor_fusion_ukf.py`, `sensor_fusion_pf.py`, `compare_filters.py`, `sft_hardware_recovery.yaml` |
-| Lu Yan Tan | Coordination, control, SLAM integration, master launch | [a676342](https://github.com/Mobile-Robots-UGV/arucho-detection-goal-generator-coordinator/commit/a676342) | `board_pose_node.py`, `board_tracker_node.py`, `sft_turtlebot_slam.launch.py` |
+| Tatwik Meesala | Perception, detection pipeline, simulation integration | [7646c12](https://github.com/Mobile-Robots-UGV/turtlebot4-smart-follower-tracker-hardware/commit/ca3c1c16c686656dc3cf1c0ee818889cd69674d9) | `recovery_follower_node.py`, `sft_hardware_recovery.launch.py`, `leader_odom_tf_node.py` |
+| Prajjwal | State estimation, simulation, prediction filters | [38f644f](https://github.com/Mobile-Robots-UGV/sim-to-real-integration/commit/4c936f0bf9cf2be801758f7c38800e12e24a9a2d) | `sensor_fusion_ekf.py`, `sensor_fusion_ukf.py`, `sensor_fusion_pf.py`, `compare_filters.py`, `sft_hardware_recovery.yaml` |
+| Lu Yan Tan | Coordination, control, SLAM integration, master launch | [a676342](https://github.com/Mobile-Robots-UGV/turtlebot4-sft-aruco-kf-pf-recovery/commit/66be0d478fe4be12f0052db4e20834ff6e05aa3b) | `board_pose_node.py`, `board_tracker_node.py`, `sft_turtlebot_slam.launch.py` |
 
 ---
 
-## 6. Mid-Point to Final: What Changed
+## 7. Mid-Point to Final: What Changed
 
 Between Milestone 2 and Milestone 3, the system was extended in the following ways:
 
