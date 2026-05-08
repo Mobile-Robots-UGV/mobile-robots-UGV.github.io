@@ -73,17 +73,7 @@ graph LR
     SLAM -->|"/map"| SLAM
     SLAM -->|"/robot_09/tf"| BTN
 ```
-![alt text](<hardware demo.gif>)
-### Hardware Following Demo
-[![Hardware Following Demo]](https://youtu.be/A36tL840Uys?si=ghFS8TSIxIrdmjJY)
-*TurtleBot 4 following ArUco board in lab environment with SLAM mapping with prediction when lost track of the board.*
 
-![alt text](simulation_demo.gif)
-### Simulation Demo
-[![Simulation Pipeline]](https://youtu.be/bWFFL76V-qk)
-*Project running in simulation*
-
-Key results: the system maintained stable following at 0.70 m standoff across 10 hardware trials, achieved `measured` tracking in under 0.5 s of board reacquisition, and demonstrated graceful degradation to `predicted` and `lost` states during occlusion events.
 
 ---
 
@@ -262,17 +252,22 @@ The velocity commands reflect the quality of each tracker's pose estimate.
 
 ---
 
-### 3.6 Summary — KF vs PF Comparison
-
-| Metric | KF | PF |
-|---|---|---|
-| Tracking stability | ✅ Stable throughout | ❌ Diverges after ~12s |
-| Measurement error | ✅ < 0.5m peak | ❌ Up to 2.7m |
-| Velocity smoothness | ✅ Smooth and bounded | ❌ Oscillates and saturates |
-| `lost` state entered | ❌ No | ✅ Yes (~25s) |
-| Recommended for hardware | ✅ Yes | ❌ Not recommended without reinitialization |
+### 3.6 Summary: KF vs PF Comparison
 
 The Kalman Filter is clearly the better choice for this application. Its constant-velocity assumption holds well for a human walking at moderate speed, and its single-estimate update law is numerically stable. The Particle Filter requires more careful tuning of particle count, noise parameters, and resampling thresholds before it can match KF performance on hardware.
+
+
+### Demo
+![alt text](<hardware demo.gif>)
+### Hardware Following Demo
+[![Hardware Following Demo]](https://youtu.be/A36tL840Uys?si=ghFS8TSIxIrdmjJY)
+*TurtleBot 4 following ArUco board in lab environment with SLAM mapping with prediction when lost track of the board.*
+
+![alt text](simulation_demo.gif)
+### Simulation Demo
+[![Simulation Pipeline]](https://youtu.be/bWFFL76V-qk)
+*Project running in simulation*
+
 ---
 
 ## 4. Ethical Impact Statement
@@ -293,13 +288,10 @@ The LiDAR-based safety guard has a known limitation: the RPLidar sensor cannot d
 
 ## 5. Custom Module Code Links
 
-| Module | File |
+| Algorithm | File |
 |---|---|
-| `board_pose_node.py` | [board_pose_node.py](https://github.com/Mobile-Robots-UGV/turtlebot4-smart-follower-tracker-hardware/blob/main/board_pose_ros/board_pose_ros/board_pose_node.py) |
-| `board_tracker_node.py` | [board_tracker_node.py](https://github.com/Mobile-Robots-UGV/turtlebot4-smart-follower-tracker-hardware/blob/main/sft_hardware_tracker/sft_hardware_tracker/board_tracker_node.py) |
-| `recovery_follower_node.py` | [recovery_follower_node.py](https://github.com/Mobile-Robots-UGV/turtlebot4-smart-follower-tracker-hardware/blob/main/sft_hardware_tracker/sft_hardware_tracker/recovery_follower_node.py) |
-| `leader_odom_tf_node.py` | [leader_odom_tf_node.py](https://github.com/Mobile-Robots-UGV/turtlebot4-smart-follower-tracker-hardware/blob/main/sft_hardware_tracker/sft_hardware_tracker/leader_odom_tf_node.py) |
-| `sft_hardware_recovery.launch.py` | [sft_hardware_recovery.launch.py](https://github.com/Mobile-Robots-UGV/turtlebot4-smart-follower-tracker-hardware/blob/main/sft_hardware_tracker/launch/sft_hardware_recovery.launch.py) |
+| `board_pose_node.py` | [board_pose_node.py](https://github.com/Mobile-Robots-UGV/sim-to-real-integration/blob/main/sft_hardware_tracker/sft_hardware_tracker/board_tracker_node.py) |
+
 
 ---
 
@@ -308,7 +300,7 @@ The LiDAR-based safety guard has a known limitation: the RPLidar sensor cannot d
 | Team Member | Primary Technical Role | Key Git Commits/PRs | Specific File(s) Authorship |
 |---|---|---|---|
 | Tatwik Meesala | Perception, detection pipeline, simulation integration | [7646c12](https://github.com/Mobile-Robots-UGV/turtlebot4-smart-follower-tracker-hardware/commit/ca3c1c16c686656dc3cf1c0ee818889cd69674d9) | `recovery_follower_node.py`, `sft_hardware_recovery.launch.py`, `leader_odom_tf_node.py` |
-| Prajjwal | State estimation, simulation, prediction filters | [38f644f](https://github.com/Mobile-Robots-UGV/sim-to-real-integration/commit/4c936f0bf9cf2be801758f7c38800e12e24a9a2d) | `sensor_fusion_ekf.py`, `sensor_fusion_ukf.py`, `sensor_fusion_pf.py`, `compare_filters.py`, `sft_hardware_recovery.yaml` |
+| Prajjwal | State estimation, simulation, prediction filters | [38f644f](https://github.com/Mobile-Robots-UGV/sim-to-real-integration/commit/4c936f0bf9cf2be801758f7c38800e12e24a9a2d) | `sensor_fusion_ekf.py`, `sensor_fusion_ukf.py`, `sensor_fusion_pf.py`, `compare_filters.py` |
 | Lu Yan Tan | Coordination, control, SLAM integration, master launch | [a676342](https://github.com/Mobile-Robots-UGV/turtlebot4-sft-aruco-kf-pf-recovery/commit/66be0d478fe4be12f0052db4e20834ff6e05aa3b) | `board_pose_node.py`, `board_tracker_node.py`, `sft_turtlebot_slam.launch.py` |
 
 ---
