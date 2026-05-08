@@ -5,7 +5,7 @@ parent: Milestones
 nav_order: 2
 ---
 
-## Milestone 3: SmartFollower & Tracker — Final Scientific Dossier
+## Milestone 3: SmartFollower & Tracker — Final Documentation & Analysis
 
 ---
 
@@ -210,7 +210,7 @@ The system continuously streams and processes RGB video from the TurtleBot 4 OAK
 
 ### Safety
 
-The TurtleBot 4 carries approximately 9 kg of payload at speeds up to 0.46 m/s, yielding a kinetic energy of roughly 1 J — low but non-negligible in a collision with a person's ankle or a child. Our system enforces conservative speed limits: `max_linear_measured = 0.15 m/s` and a LiDAR front safety guard that stops the robot when obstacles enter within 0.45 m. During prediction mode, forward speed is further capped at 0.02 m/s. These limits reflect a Justice framework — the robot should not impose disproportionate risk on bystanders who have not consented to its presence. Future iterations should add 360-degree obstacle detection rather than only the current 50-degree front cone.
+The TurtleBot 4 carries approximately 9 kg of payload at speeds up to 0.46 m/s, yielding a kinetic energy of roughly 1 J — low but non-negligible in a collision with a person's foot or a child. Our system enforces conservative speed limits: `max_linear_measured = 0.15 m/s` and a LiDAR front safety guard that stops the robot when obstacles enter within 0.45 m. During prediction mode, forward speed is further capped at 0.02 m/s. These limits reflect a Justice framework — the robot should not impose disproportionate risk on bystanders who have not consented to its presence. Future iterations should add 360-degree obstacle detection rather than only the current 50-degree front cone.
 
 ### Bias and Hardware Limitations
 
@@ -239,15 +239,3 @@ The LiDAR-based safety guard has a known limitation: the RPLidar sensor cannot d
 | Lu Yan Tan | Coordination, control, SLAM integration, master launch | [a676342](https://github.com/Mobile-Robots-UGV/turtlebot4-sft-aruco-kf-pf-recovery/commit/66be0d478fe4be12f0052db4e20834ff6e05aa3b) | `board_pose_node.py`, `board_tracker_node.py`, `sft_turtlebot_slam.launch.py` |
 
 ---
-
-## 7. Mid-Point to Final: What Changed
-
-Between Milestone 2 and Milestone 3, the system was extended in the following ways:
-
-- **PD angular controller** replaced the original P-only controller, adding a derivative term `kd_angular` to dampen overshoot and reduce oscillation during turning
-- **Deadband on X and Z errors** was added to prevent continuous micro-corrections when the board is approximately centered
-- **Subscriber queue depth reduced to 1** with Best Effort QoS across all nodes to eliminate stale data buildup that caused delayed reactions
-- **OpenCV version compatibility** was added to handle both legacy (`detectMarkers`) and new (`ArucoDetector`) ArUco APIs across different Ubuntu/ROS2 installations
-- **SLAM integration** via `namespace:=/robot_09` was validated on hardware, enabling real-time map building during following without any topic remapping
-- **Single-command master launch file** was developed to start all nodes simultaneously with optional SLAM and RViz2 flags
-- **Simulation pipeline** was integrated from teammate's repository, enabling staged testing in Gazebo with a teleop leader robot before hardware deployment
