@@ -2,7 +2,7 @@
 layout: default
 title: "Report 1"
 parent: Project
-nav_order: 1
+nav_order: 3
 ---
 
 # Report 1: XX
