@@ -113,6 +113,17 @@ The Kalman gain $$\mathbf{K}_k$$ decides the blend. High sensor noise means trus
 
 When the board disappears, the filter keeps predicting using the last known velocity. This gives the robot a few seconds of graceful recovery before giving up.
 
+**Implementation Details (from KFBackend):**  
+The Kalman Filter backend in the codebase provides four core functions that support the behavior described above:
+
+- `_make_FQ(dt)` — builds the state‑transition matrix **F** and process‑noise covariance **Q** using the timestep.  
+- `update(meas_x, meas_z, dt)` — performs the full predict + correct cycle using the Kalman gain.  
+- `peek(dt)` — returns a one‑step prediction without modifying internal state; used for publishing `/tracked_board_pose`.  
+- `rollout(dt, n_steps)` — generates a predicted future path for visualization.
+
+These functions ensure numerically stable updates and smooth tracking, which matches the strong performance observed in the benchmarking results.
+
+
 ---
 
 ### 2.2b Particle Filter: An Alternative Tracker
@@ -135,6 +146,17 @@ $$w_i \propto \exp\!\left( -\frac{(x_i - x_{meas})^2 + (z_i - z_{meas})^2}{2\sig
 
 The final estimate is the weighted average of all particles:
 $$\hat{x} = \sum_i w_i \cdot x_i, \quad \hat{z} = \sum_i w_i \cdot z_i$$
+
+**Implementation Details (from PFBackend):**  
+The Particle Filter backend implements a bootstrap/SIR filter with 300 particles:
+
+- `_motion_update(dt)` — propagates each particle using the constant‑velocity model plus Gaussian noise scaled by √dt.  
+- `update(meas_x, meas_z, dt)` — performs motion update, likelihood weighting, and triggers systematic resampling when particle degeneracy is detected.  
+- `peek(dt)` — computes the weighted mean and covariance of particles, then projects one step forward.  
+- `rollout(dt, n_steps)` — predicts a future path using the mean particle.
+
+In practice, this backend is more sensitive to noise and requires careful tuning; in the trials, particle dispersion caused divergence after ~12 seconds, consistent with the instability seen in the plots.
+
 
 **KF vs PF in plain terms:**
 
@@ -258,15 +280,15 @@ The Kalman Filter is clearly the better choice for this application. Its constan
 
 
 ### Demo
-![alt text](<hardware demo.gif>)
-### Hardware Following Demo
-[![Hardware Following Demo]](https://youtu.be/A36tL840Uys?si=ghFS8TSIxIrdmjJY)
-*TurtleBot 4 following ArUco board in lab environment with SLAM mapping with prediction when lost track of the board.*
-
 ![alt text](simulation_demo.gif)
 ### Simulation Demo
 [![Simulation Pipeline]](https://youtu.be/bWFFL76V-qk)
 *Project running in simulation*
+
+![alt text](<hardware demo.gif>)
+### Hardware Following Demo
+[![Hardware Following Demo]](https://youtu.be/A36tL840Uys?si=ghFS8TSIxIrdmjJY)
+*TurtleBot 4 following ArUco board in lab environment with SLAM mapping with prediction when lost track of the board.*
 
 ---
 
@@ -290,7 +312,7 @@ The LiDAR-based safety guard has a known limitation: the RPLidar sensor cannot d
 
 | Algorithm | File |
 |---|---|
-| `board_pose_node.py` | [board_pose_node.py](https://github.com/Mobile-Robots-UGV/sim-to-real-integration/blob/main/sft_hardware_tracker/sft_hardware_tracker/board_tracker_node.py) |
+| `KF and PF` | [board_pose_node.py](https://github.com/Mobile-Robots-UGV/sim-to-real-integration/blob/main/sft_hardware_tracker/sft_hardware_tracker/board_tracker_node.py) |
 
 
 ---
